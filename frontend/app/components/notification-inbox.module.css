@@ -1,0 +1,22 @@
+.modal { width: min(680px, calc(100vw - 24px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid #c6cbbd; border-radius: 16px; background: #f5f4ee; color: #273025; box-shadow: 0 24px 80px #0004; }
+.modal::backdrop { background: #18201799; }
+.panel { padding: 0 22px 24px; }
+.header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; padding: 16px 0; background: #f5f4ee; border-bottom: 1px solid #d6d7c9; }
+.header button, .inbox button { cursor: pointer; border: 1px solid #b7c0ae; border-radius: 7px; padding: 9px 12px; background: #303b2d; color: #fff; font: inherit; font-size: 13px; }
+.header button { background: transparent; color: #273025; min-width: 40px; min-height: 40px; }
+.inbox { font-size: 14px; line-height: 1.6; }
+.inbox h2 { font: 400 28px Georgia, serif; margin: 22px 0 14px; }
+.inbox h2 small { font: 14px Arial, sans-serif; }
+.inbox a { color: #384e2c; text-underline-offset: 3px; }
+.inbox button:disabled { opacity: .5; cursor: default; }
+.card { padding: 18px; border: 1px solid #d0d2cb; border-radius: 10px; margin: 16px 0; overflow-wrap: anywhere; transition: background-color 180ms ease; }
+.card p:first-child { margin-top: 0; }
+.card time { font-size: 12px; color: #62665f; }
+.unread { background: #fff; border-left: 4px solid #a9472e; }
+.read { background: #e4e5e1; }
+.error { padding: 12px; background: #f7ded5; color: #8d321f; }
+button.menuButton { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 14px 0 0; background: transparent; color: #303b2d; border-color: #c6cbbd; }
+.badge { border-radius: 20px; background: #a9472e; color: white; padding: 3px 7px; }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.modal :is(button, a):focus-visible { outline: 3px solid #bb4d31; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .card { transition: none; } }

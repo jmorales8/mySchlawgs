@@ -1,0 +1,6 @@
+.footer { display: flex; width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 20px; padding: 30px max(24px, calc((100vw - 1180px) / 2)); background: #2c352a; color: #d8d9ce; font-size: 12px; }
+.footer a { display: inline-flex; align-items: center; color: inherit; text-decoration: none; padding: 8px 10px; margin: -8px -10px; border-radius: 6px; transition: background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease; }
+.footer a:hover, .footer a:focus-visible { background: #ffffff24; box-shadow: inset 0 0 0 1px #ffffff30; }
+.footer a:focus-visible { outline: 2px solid #d8d9ce; outline-offset: 3px; }
+.footer a:active { background: #ffffff26; box-shadow: inset 0 2px 4px #0004; transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) { .footer a { transition: none; } }

@@ -1,0 +1,28 @@
+.dialog { width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 1px solid #c6cbbd; border-radius: 14px; background: #faf8f1; color: #273025; overflow-y: auto; }
+.dialog::backdrop { background: #182017cf; }
+.inner { padding: 22px; }
+.inner header, .inner footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.inner p { font-size: 12px; line-height: 1.6; }
+.preview { display: grid; place-items: center; background: #deded3; border-radius: 8px; padding: 8px; }
+.preview canvas { max-width: 100%; max-height: 38dvh; object-fit: contain; width: auto; height: auto; }
+.cropSurface { position: relative; overflow: hidden; line-height: 0; }
+.cropSurface canvas { display: block; width: 100%; height: auto; max-height: none; }
+.cropBox { position: absolute; border: 2px dotted white; box-shadow: 0 0 0 2000px #0008; }
+.dialog .cropHandle { position: absolute; padding: 0; border: 0; border-radius: 0; min-width: 0; background: transparent; touch-action: none; }
+.dialog .move { inset: 0; width: 100%; height: 100%; cursor: move; }
+.dialog .n, .dialog .s { left: 22px; right: 22px; height: 18px; cursor: ns-resize; }
+.dialog .n { top: -2px; } .dialog .s { bottom: -2px; }
+.dialog .e, .dialog .w { top: 22px; bottom: 22px; width: 18px; cursor: ew-resize; }
+.dialog .e { right: -2px; } .dialog .w { left: -2px; }
+.dialog .ne, .dialog .nw, .dialog .se, .dialog .sw { width: 22px; height: 22px; border: 3px solid white; background: #27302555; }
+.dialog .ne { top: -2px; right: -2px; cursor: nesw-resize; }
+.dialog .nw { top: -2px; left: -2px; cursor: nwse-resize; }
+.dialog .se { bottom: -2px; right: -2px; cursor: nwse-resize; }
+.dialog .sw { bottom: -2px; left: -2px; cursor: nesw-resize; }
+.dialog .cropHandle:focus-visible { outline: 3px solid #f7b684; outline-offset: -3px; }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0; padding: 16px; border: 1px solid #c6cbbd; border-radius: 8px; }
+.controls label { min-width: 0; }
+.controls select { display: block; width: 100%; padding: 10px; margin-top: 8px; background: #fffdf8; color: #273025; border: 1px solid #c6cbbd; border-radius: 6px; }
+.controls input[type=range] { padding: 0; height: 32px; accent-color: #303b2d; }
+.inner footer { margin-top: 18px; }
+@media (max-width: 520px) { .inner { padding: 16px; } .controls { grid-template-columns: 1fr; gap: 10px; } }

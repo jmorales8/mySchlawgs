@@ -1,0 +1,49 @@
+.social { padding: 0 22px 22px; border-top: 1px solid #d6d7c9; }
+.summary { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; align-items: center; }
+.social .plain { background: transparent; color: #526048; border: 0; padding: 4px 0; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.social .actions > button, .social .reactionControl > button { width: 100%; background: #eef0e5; color: #303b2d; border-color: #c6cbbd; }
+.reactionControl { position: relative; }
+.picker { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 5; width: min(285px, 70vw); padding: 12px; border: 1px solid #c6cbbd; border-radius: 14px; background: #fffdf8; box-shadow: 0 8px 24px #27302526; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.social .picker button { padding: 9px 6px; background: #f1eee4; border: 1px solid transparent; color: #303b2d; }
+.social .picker button[aria-pressed=true] { border-color: #303b2d; background: #dce1d3; }
+.picker span { display: block; font-size: 25px; margin-bottom: 5px; }
+.picker small { grid-column: 1 / -1; color: #626b5a; font-size: 10px; margin-top: 4px; }
+.people, .comments { margin-top: 18px; padding-top: 14px; border-top: 1px solid #d6d7c9; }
+.social h3 { font: 400 22px Georgia, serif; margin: 0 0 14px; }
+.people p, .people li { font-size: 13px; line-height: 1.6; }
+.people ul { list-style: none; padding: 0; max-height: 200px; overflow: auto; }
+.people li { padding: 4px 0; }
+.shareLink { margin-top: 16px; }
+.shareLink a, .message a { color: #526048; text-decoration: underline; text-underline-offset: 3px; }
+.shareLink a { display: inline-block; margin-top: 10px; }
+.message, .error { font-size: 13px; line-height: 1.6; margin: 12px 0 0; }
+.error { color: #8d321f; }
+.comment { border-radius: 10px; background: #eeeee4; margin: 12px 0; padding: 14px; }
+.comment strong { font-size: 13px; }
+.comment time { display: block; font-size: 10px; color: #626b5a; margin-top: 4px; }
+.comment p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.6; margin: 10px 0; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; }
+.comments form { margin-top: 18px; }
+.comments form > button { margin-top: 12px; }
+@media (max-width: 480px) { .social { padding: 0 14px 18px; } .social .actions button { padding: 10px 8px; } }
+.quoteArea { padding: 0 22px; }
+.bestQuote { margin: 0 0 20px; padding: 16px; border-left: 3px solid #bc814c; border-radius: 8px; background: #fff8ef; }
+.bestQuote figcaption { font-size: 12px; font-weight: 700; color: #795437; }
+.bestQuote blockquote { margin: 10px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bestQuote > span { font-size: 13px; }
+.bestQuote button { display: block; margin-top: 12px; background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
+.commentHeader { display: flex; align-items: flex-start; gap: 10px; }
+.slideBadge { display: inline-grid; place-items: center; flex-shrink: 0; min-width: 28px; height: 28px; padding: 0 5px; border-radius: 7px; background: #e8dccb; color: #503b2c; font-weight: 700; font-size: 12px; }
+.social .quoteAction { display: block; margin: 8px 0; padding: 6px 0; background: transparent; border: 0; color: #795437; font-size: 12px; cursor: pointer; }
+.social .quoteAction:disabled { opacity: .65; cursor: default; }
+.authorLike { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: #526048; font-size: 12px; line-height: 1.5; }
+.authorAvatar { display: inline-grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: #dce1d3; color: #354431; font-size: 12px; }
+.commentActions { display: flex; gap: 16px; margin-top: 6px; }
+.reply { border-left: 2px solid #b4bea6; }
+.replyContext { display: block; color: #637257; font-size: 12px; margin-bottom: 8px; }
+.moderation { border-top: 1px solid #d6d7c9; padding-top: 12px; margin-top: 16px; font-size: 13px; }
+.moderation > button { margin-right: 16px; }
+.moderation form { margin-top: 12px; }
+.moderation select { width: 100%; margin: 8px 0 16px; padding: 10px; border: 1px solid #c6cbbd; border-radius: 7px; background: #fffdf8; color: #273025; }
+.moderation form > button { margin: 12px 12px 0 0; }
