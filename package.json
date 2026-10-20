@@ -1,0 +1,14 @@
+{
+  "name": "myschlawgs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently --kill-others --names frontend,backend --prefix-colors cyan,green \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "node scripts/wait-for-backend.mjs && npm --prefix frontend run dev -- --port 3000",
+    "dev:backend": "dotnet watch --project backend/backend.csproj run --launch-profile http",
+    "setup": "npm install && npm --prefix frontend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
+}

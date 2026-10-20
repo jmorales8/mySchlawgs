@@ -1,0 +1,41 @@
+@backend_HostAddress = http://localhost:5005
+@photoId = replace-with-an-id-returned-by-upload
+
+### Register (use your HTTP client's cookie jar for subsequent requests)
+POST {{backend_HostAddress}}/api/auth/register
+Content-Type: application/json
+X-Schlawgs-Request: 1
+
+{"username":"my_dog_account","password":"replace-with-your-password"}
+
+### Current account
+GET {{backend_HostAddress}}/api/auth/me
+
+### Upload (change the path to a real image)
+POST {{backend_HostAddress}}/api/photos
+Content-Type: multipart/form-data; boundary=PhotoBoundary
+X-Schlawgs-Request: 1
+
+--PhotoBoundary
+Content-Disposition: form-data; name="files"; filename="dog.png"
+Content-Type: image/png
+
+< ./dog.png
+--PhotoBoundary
+Content-Disposition: form-data; name="descriptions"
+
+A good day at the park.
+--PhotoBoundary--
+
+### List photo metadata
+GET {{backend_HostAddress}}/api/photos
+
+### Edit your description
+PATCH {{backend_HostAddress}}/api/photos/{{photoId}}
+Content-Type: application/json
+X-Schlawgs-Request: 1
+
+{"description":"The best day at the park."}
+
+### Download one photo
+GET {{backend_HostAddress}}/api/photos/{{photoId}}

@@ -1,0 +1,7 @@
+# Local dependency caches and installed packages
+.pnpm-store/
+node_modules/
+
+# Generated .NET build output
+**/bin/
+**/obj/
