@@ -1,6 +1,7 @@
 using Backend.Data;
 using Backend.Dtos;
 using Backend.Models;
+using Backend.Security;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -105,18 +106,29 @@ public static class PhotoEndpoints
             });
         }
 
+        try { data = await ImageSanitizer.SanitizeAsync(data, file.ContentType, cancellationToken); }
+        catch (InvalidDataException error) {
+            return Results.ValidationProblem(new Dictionary<string, string[]> { ["file"] = [error.Message] });
+        }
+        if (photos.Sum(photo => photo.Size) + data.LongLength > 50 * 1024 * 1024)
+            return Results.BadRequest(new { message = "The cleaned images exceed the 50 MB post limit. Choose smaller images." });
+
+        var photoId = Guid.NewGuid();
+        var extension = file.ContentType.ToLowerInvariant() switch {
+            "image/jpeg" => ".jpg", "image/png" => ".png", "image/gif" => ".gif", _ => ".webp"
+        };
         var photo = new Photo
         {
-            Id = Guid.NewGuid(),
+            Id = photoId,
             PostId = profile ? null : batchId,
             BatchId = profile ? null : batchId,
             BatchPosition = index,
             OwnerId = ownerId,
             Description = description.Trim(),
             IsProfilePhoto = profile,
-            FileName = Path.GetFileName(file.FileName),
+            FileName = $"{photoId:N}{extension}",
             ContentType = file.ContentType.ToLowerInvariant(),
-            Size = file.Length,
+            Size = data.LongLength,
             Data = data,
             UploadedAt = uploadedAt
         };
@@ -143,13 +155,16 @@ public static class PhotoEndpoints
                 || db.Comments.Any(c => c.PostId == x.PostId && c.AuthorId == userId)
                 || db.Comments.Any(c => c.PostId == x.PostId && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == userId)));
         }
+        if (feed != "mine")
+            query = query.Where(x => !db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null));
         var photos = await query
             .OrderByDescending(x => x.UploadedAt)
             .ThenBy(x => x.PostId).ThenBy(x => x.BatchPosition).ThenBy(x => x.Id)
             .Select(x => new PhotoResponse(
                 x.Id, x.FileName, x.ContentType, x.Size, x.UploadedAt, $"/api/photos/{x.Id}", x.Description, x.OwnerId,
                 x.Owner == null ? null : x.Owner.Username,
-                x.Owner == null || x.Owner.ProfilePhotoId == null ? null : $"/api/photos/{x.Owner.ProfilePhotoId}", x.BatchId, x.BatchPosition, x.PostId))
+                x.Owner == null || x.Owner.ProfilePhotoId == null ? null : $"/api/photos/{x.Owner.ProfilePhotoId}", x.BatchId, x.BatchPosition, x.PostId,
+                db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null)))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(photos);
@@ -158,9 +173,13 @@ public static class PhotoEndpoints
     private static async Task<IResult> DownloadPhotoAsync(
         Guid id,
         AppDbContext db,
+        HttpContext context,
         CancellationToken cancellationToken)
     {
-        var photo = await db.Photos.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        Guid? viewer = Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
+        var photo = await db.Photos.AsNoTracking().Where(x => (viewer != null && x.OwnerId == viewer)
+            || !db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null))
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         return photo is null
             ? Results.NotFound()
             : Results.File(photo.Data, photo.ContentType);

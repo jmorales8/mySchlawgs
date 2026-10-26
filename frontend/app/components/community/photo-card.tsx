@@ -37,6 +37,7 @@ export default function PhotoCard({ photos, owner, onSaved, userId }: { photos: 
   return <article className={`${styles.photoCard} ${styles.postReveal}`} aria-roledescription={photos.length > 1 ? "carousel" : undefined} aria-label={`Photos by ${photo.username ?? "the schlawgs"}`}>
     {focusIndex !== null && <PhotoFocus photos={photos} initialIndex={focusIndex} onClose={next => { setFocusIndex(null); setActiveIndex(next); trackRef.current?.scrollTo({ left: next * trackRef.current.clientWidth, behavior: "instant" }); }} />}
     <header><Avatar user={photo} className={styles.avatar} /><div><strong>{photo.username ? `@${photo.username}` : "From the original shclawginsteins"}</strong><time dateTime={photo.uploadedAt}>{new Date(photo.uploadedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div></header>
+    {owner && photo.isUnderReview && <p className={styles.notice} role="status">This post was reported and is hidden from public feeds while awaiting moderator review. You can still see it here in My photos. <a href={`/account/reports?post=${photo.postId ?? photo.batchId ?? photo.id}`}>View reports or request a review</a>.</p>}
     <div className={styles.carousel} tabIndex={photos.length > 1 ? 0 : undefined} aria-label="Photo viewer. Use left and right arrow keys to browse." onKeyDown={event => {
       if (editingCaption || photos.length < 2 || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
       event.preventDefault(); navigate(event.key === "ArrowLeft" ? -1 : 1);

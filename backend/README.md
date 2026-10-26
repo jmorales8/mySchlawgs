@@ -53,6 +53,32 @@ All POST/PATCH requests require `X-Schlawgs-Request: 1`. Browser traffic uses th
 
 Uploads support JPEG, PNG, GIF, and WebP, with signature checks. Up to 10 photos per batch, 10 MB per file, 50 MB combined. Each description is optional (send an empty field) and limited to 2,000 characters. Invalid batches save nothing. Profile images are excluded from the feed. Images are stored in PostgreSQL bytea columns. The initial feed returns all metadata; pagination and object storage are future scaling work.
 
+All new post, profile, and animal-picture uploads are decoded and re-encoded
+with Magick.NET before storage. This strips EXIF/GPS, XMP, IPTC, ICC profiles,
+comments, and trailing data. EXIF orientation is applied first; embedded color
+profiles are converted to sRGB before removal. GIF/WebP frame timing and loop
+counts are preserved. Stored filenames are generated from photo IDs, and
+stored sizes describe the cleaned files. JPEGs are re-encoded at quality 90.
+Processing rejects malformed images and limits dimensions to 16,384 per side,
+200 frames, and 50 million pixels across all frames. Cleaned files must still
+fit the 10 MB/file and 50 MB/batch limits. The original bytes are not saved.
+Existing database images are not rewritten by this change.
+
+Run the focused metadata checks with:
+
+```powershell
+dotnet run --project tests/SmokeTests.csproj -c Release -- --images-only
+```
+
+## Reported post visibility
+
+The first active report hides a post from Latest, Liked / interacted, random
+discovery, and public post/image/activity URLs. The author retains access in
+My photos and sees an awaiting-review notice. Reports do not automatically
+remove a post based on their count. A moderator removal hides it from My photos
+as well; the private reports page retains evidence for review and disputes.
+An accepted dispute dismisses active reports and restores public visibility.
+
 ## Integration checks
 
 With the API running, from the workspace root:

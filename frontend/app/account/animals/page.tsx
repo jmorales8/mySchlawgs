@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import { useAccount } from "../../components/account-provider";
+import { useAccount } from "../../contexts/account-context";
 import { api } from "../../components/api";
 import styles from "./profiles.module.css";
 import CatalogInput from "./catalog-input";

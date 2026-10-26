@@ -19,7 +19,7 @@ public static class ModerationEndpoints
                 return Results.BadRequest(new { message = "Choose a report reason and use at most 1,000 characters for details." });
             var userId = UserId(context);
             if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
-            // Serialize reports and removals for this post; concurrent reports cannot miss the threshold.
+            // Serialize reports and removals so review decisions cover a consistent set of reports.
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (post == null) return Results.NotFound(new { message = "This post is no longer available." });
@@ -28,12 +28,10 @@ public static class ModerationEndpoints
             db.Reports.Add(new PostReport { PostId = id, ReporterId = userId, Reason = input.Reason, Details = input.Details?.Trim() ?? "", CreatedAt = DateTimeOffset.UtcNow });
             post.ModerationVersion++;
             var count = await db.Reports.CountAsync(r => r.PostId == id && r.DismissedAt == null, ct) + 1;
-            if (count > 10) { post.RemovedAt = DateTimeOffset.UtcNow; post.RemovalReason = "Automatically removed after 11 distinct account reports."; }
             await db.SaveChangesAsync(ct);
-            await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"report:{id}:{userId}", "report", $"Your post was reported for {input.Reason}. It has {count} active report(s). You can request a review.", ct);
-            if (post.RemovedAt != null) await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"removed:{id}:{post.ModerationVersion}", "removed", "Your post was automatically taken down after 11 reports. You can dispute this decision.", ct);
+            await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"report:{id}:{userId}", "report", $"Your post was reported for {input.Reason}. It is hidden from public feeds while awaiting moderator review, but you can still see it in My photos. It has {count} active report(s). You can request a review.", ct);
             await transaction.CommitAsync(ct);
-            return Results.Ok(new { removed = post.RemovedAt != null, message = "Report received. Thank you for helping keep the community safe." });
+            return Results.Ok(new { removed = false, hidden = true, message = "Report received. This post is hidden from public feeds while awaiting moderator review." });
         }).RequireAuthorization().RequireRateLimiting("reports");
 
         var moderation = endpoints.MapGroup("/api/moderation").RequireAuthorization();

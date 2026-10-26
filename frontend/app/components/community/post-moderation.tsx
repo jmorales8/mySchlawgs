@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import styles from "./post-social.module.css";
-import { useAccount } from "../account-provider";
+import { useAccount } from "../../contexts/account-context";
 
 export default function PostModeration({ postId, userId, canModerate, reported, onRemoved }: { postId: string; userId: string | null; canModerate: boolean; reported: boolean; onRemoved: () => Promise<void> }) {
   const [mode, setMode] = useState<"report" | "remove" | null>(null);
@@ -30,8 +30,8 @@ export default function PostModeration({ postId, userId, canModerate, reported, 
           await api(`/api/moderation/posts/${postId}/remove`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: details }) });
           setMode(null); await onRemoved();
         } else {
-          const result = await api<{ removed: boolean; message: string }>(`/api/posts/${postId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, details }) });
-          setSent(true); setMode(null); setMessage(result.message); if (result.removed) await onRemoved();
+          const result = await api<{ removed: boolean; hidden: boolean; message: string }>(`/api/posts/${postId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, details }) });
+          setSent(true); setMode(null); setMessage(result.message); if (result.hidden || result.removed) await onRemoved();
         }
       } catch (e) { setMessage((e as Error).message); } finally { setBusy(false); }
     }}>

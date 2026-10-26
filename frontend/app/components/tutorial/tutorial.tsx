@@ -1,11 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import styles from "./tutorial.module.css";
 
-const TutorialContext = createContext<() => void>(() => {});
-export const useTutorial = () => useContext(TutorialContext);
 
 const pages = [
   { title: "Share your first moment", label: "Make a post", paragraphs: ["Choose + Share a post beside the feed buttons. Add up to 10 photos, then choose one description for all photos or a separate story for each.", "Use + Add more photos to complete your post, then Share to publish. Everyone can view your post. Closing the composer keeps your draft until you leave or refresh the page."] },
@@ -16,18 +14,11 @@ const pages = [
   { title: "Keep it kind", label: "Share Good company", paragraphs: ["Share photos you have permission to post, keep animals comfortable, and treat people with care. You can remove your own comments, and authors can remove comments on their posts. Moderators can also remove comments.", "Use Report post for genuine concerns. If your own post is reported, notifications lead to your reports and disputes. You can reopen this guide anytime using How posts work in the footer."] },
 ];
 
-export function TutorialLink() {
-  const open = useTutorial();
-  return <a href="/how-it-works" aria-haspopup="dialog" onClick={event => { event.preventDefault(); open(); }}>How posts work</a>;
-}
-
-export default function TutorialProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+export default function TutorialDialog({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(0);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!open) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -40,19 +31,16 @@ export default function TutorialProvider({ children }: { children: ReactNode }) 
       if (previousFocus?.isConnected) previousFocus.focus();
       else document.querySelector<HTMLElement>('summary, nav a')?.focus();
     };
-  }, [open]);
+  }, [onClose]);
   function turn(next: number) { setPage(next); bodyRef.current?.scrollTo({ top: 0 }); }
-  return <TutorialContext.Provider value={() => { setPage(0); setOpen(true); }}>
-    {children}
-    {open && createPortal(<dialog ref={dialogRef} className={styles.dialog} aria-labelledby="tutorial-title" onCancel={event => { event.preventDefault(); setOpen(false); }} onClick={event => { if (event.target === event.currentTarget) setOpen(false); }}>
+  return createPortal(<dialog ref={dialogRef} className={styles.dialog} aria-labelledby="tutorial-title" onCancel={event => { event.preventDefault(); onClose(); }} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
       <div className={styles.book}>
-        <header className={styles.header}><span>mySchlawgs -- A little field guide --</span><button type="button" onClick={() => setOpen(false)} aria-label="Close tutorial">✕</button></header>
+        <header className={styles.header}><span>mySchlawgs -- A little field guide --</span><button type="button" onClick={() => onClose()} aria-label="Close tutorial">✕</button></header>
         <div ref={bodyRef} className={styles.body}>
           <aside className={styles.cover} aria-hidden="true"><span>THE COMMUNITY GUIDE</span><strong>{String(page + 1).padStart(2, "0")}</strong><p>{pages[page].label}</p></aside>
           <section className={styles.page} aria-live="polite" aria-atomic="true"><h2 id="tutorial-title">{pages[page].title}</h2>{pages[page].paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</section>
         </div>
-        <footer className={styles.controls}><button type="button" disabled={page === 0} onClick={() => turn(page - 1)}>← Back</button><span>Page {page + 1} of {pages.length}</span>{page < pages.length - 1 ? <button type="button" onClick={() => turn(page + 1)}>Next →</button> : <button type="button" onClick={() => setOpen(false)}>Done ✓</button>}</footer>
+        <footer className={styles.controls}><button type="button" disabled={page === 0} onClick={() => turn(page - 1)}>← Back</button><span>Page {page + 1} of {pages.length}</span>{page < pages.length - 1 ? <button type="button" onClick={() => turn(page + 1)}>Next →</button> : <button type="button" onClick={() => onClose()}>Done ✓</button>}</footer>
       </div>
-    </dialog>, document.body)}
-  </TutorialContext.Provider>;
+    </dialog>, document.body);
 }

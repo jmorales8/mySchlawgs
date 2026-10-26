@@ -7,6 +7,8 @@ using Microsoft.Extensions.Configuration;
 
 await CaptchaChecks.Run();
 if (args.FirstOrDefault() == "--captcha-only") return;
+await ImageSanitizerChecks.Run();
+if (args.FirstOrDefault() == "--images-only") return;
 var apiUrl = args.FirstOrDefault() ?? "http://localhost:5006";
 var config = new ConfigurationBuilder().AddJsonFile(Path.GetFullPath("backend/appsettings.json"))
     .AddUserSecrets(typeof(AppDbContext).Assembly).AddEnvironmentVariables().Build();
@@ -41,11 +43,12 @@ async Task<JsonElement> Check(HttpResponseMessage response, HttpStatusCode expec
     Console.WriteLine($"PASS {name}"); passed++;
     return string.IsNullOrEmpty(body) ? default : JsonDocument.Parse(body).RootElement.Clone();
 }
-var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=");
+var png = ImageSanitizerChecks.Fixture(ImageMagick.MagickFormat.Png);
+var cleanPng = await Backend.Security.ImageSanitizer.SanitizeAsync(png, "image/png");
 MultipartFormDataContent Upload(bool invalid = false, int count = 2) {
     var form = new MultipartFormDataContent();
     for (var i = 0; i < count; i++) {
-        var bytes = new ByteArrayContent(invalid && i == count - 1 ? new byte[] { 1, 2, 3 } : png);
+        var bytes = new ByteArrayContent(invalid && i == count - 1 ? new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 } : png);
         bytes.Headers.ContentType = new("image/png");
         form.Add(bytes, "files", $"dog{i}.png"); form.Add(new StringContent($"Story {i}"), "descriptions");
     }
@@ -69,8 +72,10 @@ try {
     Console.WriteLine("PASS uploaded photos share a batch and preserve selection order"); passed++;
     var id = uploaded[0].GetProperty("id").GetGuid();
     var image = await first.GetAsync($"/api/photos/{id}");
-    if (!image.IsSuccessStatusCode || !(await image.Content.ReadAsByteArrayAsync()).SequenceEqual(png)) throw new Exception("Downloaded bytes changed");
-    Console.WriteLine("PASS image round-trip"); passed++;
+    if (!image.IsSuccessStatusCode || !(await image.Content.ReadAsByteArrayAsync()).SequenceEqual(cleanPng)) throw new Exception("Downloaded image was not sanitized");
+    var storedPhoto = await db.Photos.AsNoTracking().SingleAsync(p => p.Id == id);
+    if (storedPhoto.FileName != $"{id:N}.png" || storedPhoto.Size != cleanPng.LongLength || !storedPhoto.Data.SequenceEqual(cleanPng)) throw new Exception("Original filename, metadata, or wrong size stored");
+    Console.WriteLine("PASS sanitized image round-trip and generated filename"); passed++;
     var before = await db.Photos.CountAsync(x => x.OwnerId == ownerId);
     await Check(await first.PostAsync("/api/photos", Upload(invalid: true)), HttpStatusCode.BadRequest, "invalid image batch rejected");
     if (await db.Photos.CountAsync(x => x.OwnerId == ownerId) != before) throw new Exception("Partial batch saved");
@@ -82,6 +87,16 @@ try {
     await Check(await second.PatchAsJsonAsync($"/api/photos/{id}", new { description = "Not mine" }), HttpStatusCode.NotFound, "other users cannot edit caption");
     var profile = await Check(await first.PostAsync("/api/profile/photo", Upload(count: 1)), HttpStatusCode.OK, "profile picture upload");
     if (profile.GetProperty("profilePhotoUrl").ValueKind != JsonValueKind.String) throw new Exception("Profile URL missing");
+    var profileId = Guid.Parse(profile.GetProperty("profilePhotoUrl").GetString()!.Split('/').Last());
+    var profileImage = await db.Photos.AsNoTracking().SingleAsync(p => p.Id == profileId);
+    if (!profileImage.Data.SequenceEqual(cleanPng) || profileImage.FileName != $"{profileId:N}.png") throw new Exception("Profile photo was not sanitized");
+    Console.WriteLine("PASS profile picture metadata stripped"); passed++;
+    var animal = await Check(await first.PostAsJsonAsync("/api/account/animals", new { name = "Privacy test", animalType = "Dog", breed = "", age = 1, ageUnit = "years", funFact = "" }), HttpStatusCode.Created, "animal for upload privacy check");
+    var animalPicture = await Check(await first.PostAsync($"/api/account/animals/{animal.GetProperty("id").GetGuid()}/photo", Upload(count: 1)), HttpStatusCode.OK, "animal picture upload");
+    var animalPhotoId = animalPicture.GetProperty("profilePhotoId").GetGuid();
+    var animalImage = await db.Photos.AsNoTracking().SingleAsync(p => p.Id == animalPhotoId);
+    if (!animalImage.Data.SequenceEqual(cleanPng) || animalImage.FileName != $"{animalPhotoId:N}.png") throw new Exception("Animal photo was not sanitized");
+    Console.WriteLine("PASS animal picture metadata stripped"); passed++;
     var feed = await Check(await first.GetAsync("/api/photos"), HttpStatusCode.OK, "public photo feed");
     var mine = feed.EnumerateArray().Where(p => p.GetProperty("ownerId").ValueKind == JsonValueKind.String && p.GetProperty("ownerId").GetGuid() == ownerId).ToArray();
     if (mine.Length != 2 || mine.Any(p => p.GetProperty("profilePhotoUrl").GetString() != profile.GetProperty("profilePhotoUrl").GetString())) throw new Exception("Profile feed association broken");
@@ -234,6 +249,22 @@ try {
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "invalid" }), HttpStatusCode.BadRequest, "report category validated");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam", details = "Test report" }), HttpStatusCode.OK, "account can report");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.Conflict, "duplicate report does not count");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "first report hides public post link");
+    await Check(await second.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.NotFound, "reported activity hidden from other accounts");
+    await Check(await anonymous.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "first report hides direct image");
+    using var pendingImage = await first.GetAsync($"/api/photos/{id}");
+    if (pendingImage.StatusCode != HttpStatusCode.OK || !(await pendingImage.Content.ReadAsByteArrayAsync()).SequenceEqual(cleanPng)) throw new Exception("Author cannot view reported image");
+    Console.WriteLine("PASS author can view reported image"); passed++;
+    var pendingPost = await Check(await first.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "author can open reported post");
+    if (!pendingPost[0].GetProperty("isUnderReview").GetBoolean()) throw new Exception("Missing pending review status");
+    var pendingMine = await Check(await first.GetAsync("/api/photos?feed=mine"), HttpStatusCode.OK, "reported post stays in My photos");
+    if (!pendingMine.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId && p.GetProperty("isUnderReview").GetBoolean())) throw new Exception("Reported post missing from author's uploads");
+    foreach (var client in new[] { anonymous, first, second }) {
+        var publicFeed = await Check(await client.GetAsync("/api/photos"), HttpStatusCode.OK, "reported post absent from latest feed for all viewers");
+        if (publicFeed.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Reported post leaked to public feed");
+    }
+    var pendingFavorites = await Check(await first.GetAsync("/api/photos?feed=interacted"), HttpStatusCode.OK, "reported post hidden from favorites");
+    if (pendingFavorites.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Reported post leaked to favorites");
     await Check(await second.GetAsync("/api/moderation/reports"), HttpStatusCode.Forbidden, "reports private to moderators");
     await Check(await anonymous.GetAsync("/api/moderation/reports"), HttpStatusCode.Unauthorized, "guest moderation denied");
     await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test" }), HttpStatusCode.Forbidden, "ordinary owner cannot force moderation removal");
@@ -249,14 +280,21 @@ try {
         using var reporter = Client();
         await Check(await reporter.PostAsJsonAsync("/api/auth/login", new { username = names[i], password }), HttpStatusCode.OK, "reporter login");
         if (i == names.Length - 1) {
-            await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "10 reports leaves post available");
+            await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "reported post stays hidden before moderator decision");
             var responses = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => reporter.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" })));
-            if (responses.Count(r => r.StatusCode == HttpStatusCode.OK) != 1 || responses.Count(r => r.StatusCode == HttpStatusCode.NotFound) != 1) throw new Exception("Concurrent takedown failed");
+            if (responses.Count(r => r.StatusCode == HttpStatusCode.OK) != 1 || responses.Count(r => r.StatusCode == HttpStatusCode.Conflict) != 1) throw new Exception("Concurrent report uniqueness failed");
             foreach (var response in responses) response.Dispose();
         } else await Check(await reporter.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.OK, "distinct report counted");
     }
-    if (await db.Reports.CountAsync(r => r.PostId == postId) != 11 || !await db.Posts.IgnoreQueryFilters().AnyAsync(p => p.Id == postId && p.RemovedAt != null && p.RemovedById == null)) throw new Exception("Automatic threshold or report uniqueness incorrect");
-    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "11 reports hides shared post");
+    if (await db.Reports.CountAsync(r => r.PostId == postId) != 11 || !await db.Posts.IgnoreQueryFilters().AnyAsync(p => p.Id == postId && p.RemovedAt == null && p.RemovedById == null)) throw new Exception("Reports must await a moderator, without automatic removal");
+    await Check(await first.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "11 reports still preserves author access pending review");
+    await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, true));
+    await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{postId}/remove", new { reason = "Reviewed reports and removed post" }), HttpStatusCode.NoContent, "moderator removes reported post");
+    await Check(await first.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "moderator removal blocks author post link");
+    await Check(await first.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "moderator removal blocks author image");
+    var removedMine = await Check(await first.GetAsync("/api/photos?feed=mine"), HttpStatusCode.OK, "My photos after moderator removal");
+    if (removedMine.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Moderator-removed post remains in My photos");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "moderator removal hides shared post");
     await Check(await anonymous.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "takedown blocks direct image URL");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.NotFound, "takedown blocks comments and reactions");
     await Check(await first.PutAsJsonAsync($"/api/posts/{postId}/reaction", new { kind = "like" }), HttpStatusCode.NotFound, "cannot react to removed post");
@@ -264,7 +302,7 @@ try {
     if (afterRemoval.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Removed post leaked to feed");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, true));
     using var reviewedPhoto = await third.GetAsync($"/api/moderation/photos/{id}");
-    if (reviewedPhoto.StatusCode != HttpStatusCode.OK || !(await reviewedPhoto.Content.ReadAsByteArrayAsync()).SequenceEqual(png)) throw new Exception("Moderator cannot review removed photo");
+    if (reviewedPhoto.StatusCode != HttpStatusCode.OK || !(await reviewedPhoto.Content.ReadAsByteArrayAsync()).SequenceEqual(cleanPng)) throw new Exception("Moderator cannot review removed photo");
     Console.WriteLine("PASS moderator can review removed photo"); passed++;
     await Check(await anonymous.GetAsync($"/api/moderation/photos/{id}"), HttpStatusCode.Unauthorized, "removed photo review private");
     await Check(await anonymous.GetAsync("/api/notifications"), HttpStatusCode.Unauthorized, "notifications require login");
@@ -294,7 +332,7 @@ try {
     if (await db.Reports.AnyAsync(r => r.PostId == postId && r.DismissedAt == null)) throw new Exception("Accepted dispute left active reports");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{disputeId}/decision", new { accept = false, reason = "Overwrite decision" }), HttpStatusCode.Conflict, "review decision cannot be overwritten");
     await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.OK, "new report after restoration");
-    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "dismissed reports do not retrigger takedown");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "new active report hides restored post again");
     var newDispute = await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "New report to review" }), HttpStatusCode.OK, "new reports allow new dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{newDispute.GetProperty("id").GetGuid()}/decision", new { accept = false, reason = "Report remains valid" }), HttpStatusCode.NoContent, "moderator rejects dispute with explanation");
     await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "Repeat same rejected dispute" }), HttpStatusCode.Conflict, "same rejected reports cannot be appealed repeatedly");

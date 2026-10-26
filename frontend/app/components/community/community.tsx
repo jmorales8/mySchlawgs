@@ -5,29 +5,26 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import styles from "./community.module.css";
 import Link from "next/link";
 import { api } from "../api";
-import { FeedCache } from "./feed-cache";
+import { usePhotoFeed, type Feed } from "../../hooks/use-photo-feed";
 import RandomPost from "./random-post";
 import NotificationBell from "../notifications/notification-bell";
 import ProfileCropper from "../photos/profile-cropper";
 import PhotoEditor from "../photos/photo-editor";
 import Captcha from "../captcha";
-import { TutorialLink, useTutorial } from "../tutorial/tutorial";
+import { TutorialLink } from "../tutorial/tutorial-link";
+import { useTutorial } from "../../contexts/tutorial-context";
 import { groupPhotoBatches } from "../photos/photo-batches";
-import { useAccount, type User } from "../account-provider";
+import { useAccount, type User } from "../../contexts/account-context";
 import Avatar from "../shared/avatar";
 import FeedSkeleton from "./feed-skeleton";
 import PhotoCard from "./photo-card";
-import type { Photo } from "./types";
 
 type Draft = { file: File; url: string; description: string };
 
 export default function Community({ postId, discovery }: { postId?: string; discovery?: "popular" | "niche" | "relevant" }) {
   const openTutorial = useTutorial();
-  const [feed, setFeed] = useState<"latest" | "interacted" | "mine">("latest");
-  const photosUrl = postId ? `/api/posts/${postId}` : `/api/photos?feed=${feed}`;
+  const [feed, setFeed] = useState<Feed>("latest");
   const { user, setUser, ready, accountError } = useAccount();
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [feedError, setFeedError] = useState("");
   const [mode, setMode] = useState<"register" | "login">("register");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaAttempt, setCaptchaAttempt] = useState(0);
@@ -35,10 +32,7 @@ export default function Community({ postId, discovery }: { postId?: string; disc
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [feedLoading, setFeedLoading] = useState(true);
-  const feedRequest = useRef(0);
-  const feedCache = useRef(new FeedCache<Photo[]>());
-  const feedKey = `${user?.id ?? "guest"}:${photosUrl}`;
+  const { data: photos = [], loading: feedLoading, error: feedError, refresh } = usePhotoFeed(feed, postId);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [descriptionMode, setDescriptionMode] = useState<"individual" | "shared">("individual");
   const [sharedDescription, setSharedDescription] = useState("");
@@ -68,30 +62,10 @@ export default function Community({ postId, discovery }: { postId?: string; disc
     return () => document.removeEventListener("pointerdown", dismiss);
   }, []);
 
-  async function refresh() {
-    const request = ++feedRequest.current;
-    try { const items = await feedCache.current.read(feedKey, () => api<Photo[]>(photosUrl), true); if (request === feedRequest.current) { setPhotos(items); setFeedError(""); } }
-    catch (e) { if (request === feedRequest.current) { setPhotos([]); setFeedError((e as Error).message); } }
-    finally { if (request === feedRequest.current) setFeedLoading(false); }
-  }
   useEffect(() => {
     return () => { draftRef.current.forEach(d => URL.revokeObjectURL(d.url)); };
   }, []);
-  useEffect(() => {
-    if (!ready || (!user && !postId && feed !== "latest")) return;
-    let active = true;
-    const request = ++feedRequest.current;
-    feedCache.current.read(feedKey, () => api<Photo[]>(photosUrl)).then(items => { if (active && request === feedRequest.current) { setPhotos(items); setFeedError(""); } })
-      .catch((e: Error) => { if (active && request === feedRequest.current) { setPhotos([]); setFeedError(e.message); } })
-      .finally(() => { if (active && request === feedRequest.current) setFeedLoading(false); });
-    return () => { active = false; };
-  }, [photosUrl, feedKey, ready, user, postId, feed]);
-
-  function chooseFeed(next: "latest" | "interacted" | "mine") {
-    if (next === feed) return;
-    const cached = feedCache.current.peek(`${user?.id ?? "guest"}:/api/photos?feed=${next}`);
-    feedRequest.current++; setPhotos(cached ?? []); setFeedError(""); setFeedLoading(cached === undefined); setFeed(next);
-  }
+  function chooseFeed(next: Feed) { setFeed(next); }
 
   function updateDrafts(next: Draft[]) { draftRef.current = next; setDrafts(next); }
   function clearDrafts() { draftRef.current.forEach(d => URL.revokeObjectURL(d.url)); updateDrafts([]); setSharedDescription(""); setDescriptionMode("individual"); if (fileRef.current) fileRef.current.value = ""; }

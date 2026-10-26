@@ -18,6 +18,16 @@ public static class PostEndpoints
         var group = endpoints.MapGroup("/api/posts");
         group.AddEndpointFilter(async (context, next) => {
             context.HttpContext.Response.Headers.CacheControl = "no-store";
+            // Reported posts and their activity are private to their author until reviewed.
+            // Moderators use the separate moderation queue and photo endpoints.
+            if (context.HttpContext.Request.RouteValues.TryGetValue("id", out var value)
+                && Guid.TryParse(value?.ToString(), out var postId)) {
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var viewer = Viewer(context.HttpContext);
+                if (!await db.Posts.AnyAsync(p => p.Id == postId && ((viewer != null && p.OwnerId == viewer)
+                    || !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)), context.HttpContext.RequestAborted))
+                    return Results.NotFound(new { message = "This post is no longer publicly available." });
+            }
             return await next(context);
         });
         group.MapGet("/random", async (string? category, Guid? excludePostId, AppDbContext db, HttpContext context, CancellationToken ct) => {
@@ -26,6 +36,7 @@ public static class PostEndpoints
             var viewerId = Viewer(context);
             var since = DateTimeOffset.UtcNow.AddDays(-7);
             var candidates = db.Posts.AsNoTracking().Where(p => p.OwnerId != null
+                && !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)
                 && (viewerId == null || p.OwnerId != viewerId) && (excludePostId == null || p.Id != excludePostId)
                 && db.Photos.Any(photo => photo.PostId == p.Id && !photo.IsProfilePhoto));
             candidates = category switch {
@@ -42,7 +53,8 @@ public static class PostEndpoints
                 .OrderBy(p => p.BatchPosition).ThenBy(p => p.Id)
                 .Select(p => new PhotoResponse(p.Id, p.FileName, p.ContentType, p.Size, p.UploadedAt, $"/api/photos/{p.Id}", p.Description, p.OwnerId,
                     p.Owner == null ? null : p.Owner.Username,
-                    p.Owner == null || p.Owner.ProfilePhotoId == null ? null : $"/api/photos/{p.Owner.ProfilePhotoId}", p.BatchId, p.BatchPosition, p.PostId))
+                    p.Owner == null || p.Owner.ProfilePhotoId == null ? null : $"/api/photos/{p.Owner.ProfilePhotoId}", p.BatchId, p.BatchPosition, p.PostId,
+                    db.Reports.Any(r => r.PostId == p.PostId && r.DismissedAt == null)))
                 .ToListAsync(ct);
             return Results.Ok(photos);
         });

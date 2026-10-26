@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TutorialLink } from "../tutorial/tutorial";
+import { TutorialLink } from "../tutorial/tutorial-link";
 import styles from "./site-footer.module.css";
 
 export default function SiteFooter({ mission = false }: { mission?: boolean }) {

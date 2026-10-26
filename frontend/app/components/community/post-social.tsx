@@ -6,7 +6,7 @@ import Link from "next/link";
 import { api } from "../api";
 import styles from "./post-social.module.css";
 import PostModeration from "./post-moderation";
-import { useAccount } from "../account-provider";
+import { useAccount } from "../../contexts/account-context";
 
 const choices = [
   { kind: "like", label: "Like", emoji: "👍" },

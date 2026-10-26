@@ -14,6 +14,11 @@ The startup wait times out after two minutes with a message directing you to the
 
 Stop any copies you previously started in separate terminals before running this command, so ports 3000 and 5005 are available.
 
+Run only one of `npm run dev` and `npm run dev:docker` at a time. If startup reports an occupied port,
+stop the previous app with Ctrl+C in its terminal before retrying. The Docker
+command shows the full backend build output to help diagnose compiler errors
+or a backend executable still locked by a running process.
+
 ### First-time setup
 
 #### Docker database (recommended for local development)
@@ -33,7 +38,7 @@ The apps still run locally with hot reload; only PostgreSQL runs in Docker.
 The backend connection is set for this command only, so existing .NET user
 secrets remain intact. CAPTCHA setup is documented in [SECURITY-SETUP.md](SECURITY-SETUP.md).
 
-The Docker database is accessible at `localhost:5433`; the existing native
+The Docker database is accessible at `localhost:8080`; the existing native
 PostgreSQL database on port 5432 remains separate. Use `npm run dev:docker`
 each time you want the Docker database. Plain `npm run dev` continues using
 your usual database configuration.

@@ -32,10 +32,12 @@ const config = JSON.parse(run("docker", ["compose", "config", "--format", "json"
   stdio: ["ignore", "pipe", "inherit"], encoding: "utf8",
 }).stdout);
 const password = config.services.db.environment.POSTGRES_PASSWORD.replaceAll('"', '""');
-process.env.ConnectionStrings__Postgres = `Host=localhost;Port=5433;Database=myschlawgs;Username=myschlawgs;Password="${password}"`;
+process.env.ConnectionStrings__Postgres = `Host=localhost;Port=8080;Database=myschlawgs;Username=myschlawgs;Password="${password}"`;
 process.env.ASPNETCORE_ENVIRONMENT = "Development";
 run("dotnet", ["tool", "restore"]);
-run("dotnet", ["tool", "run", "dotnet-ef", "database", "update", "--project", "backend/backend.csproj"]);
+// Build separately so compiler errors and Windows file locks are visible.
+run("dotnet", ["build", "backend/backend.csproj"]);
+run("dotnet", ["tool", "run", "dotnet-ef", "database", "update", "--project", "backend/backend.csproj", "--no-build"]);
 if (action === "dev") {
   // npm.cmd requires a shell on Windows; this command contains no user input.
   run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "dev"], {

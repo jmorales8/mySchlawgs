@@ -15,7 +15,8 @@ public sealed record PhotoResponse(
     string? ProfilePhotoUrl,
     Guid? BatchId,
     int BatchPosition,
-    Guid? PostId)
+    Guid? PostId,
+    bool IsUnderReview = false)
 {
     public static PhotoResponse FromPhoto(Photo photo) => new(
         photo.Id,
