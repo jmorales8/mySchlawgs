@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../../components/api";
-import DisputeForm from "../../components/dispute-form";
-import styles from "../../components/community.module.css";
+import DisputeForm from "../../components/community/dispute-form";
+import styles from "../../components/community/community.module.css";
 type Entry = { id: string; removedAt: string | null; removalReason: string | null; reportCount: number; reasons: string[]; canDispute: boolean; photos: { id: string; description: string }[]; disputes: { id: string; status: string; explanation: string; decisionReason: string | null }[] };
 export default function ReportsPage() {
   const [entries, setEntries] = useState<Entry[] | null>(null);

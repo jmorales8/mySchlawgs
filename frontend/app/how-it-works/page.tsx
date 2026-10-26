@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import InfoPage from "../components/info-page";
+import InfoPage from "../components/information/info-page";
 
 export const metadata: Metadata = {
   title: "How posts work | mySchlawgs",

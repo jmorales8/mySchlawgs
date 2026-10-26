@@ -3,10 +3,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { api } from "./api";
+import { api } from "../api";
 import styles from "./post-social.module.css";
 import PostModeration from "./post-moderation";
-import { useAccount } from "./account-provider";
+import { useAccount } from "../account-provider";
 
 const choices = [
   { kind: "like", label: "Like", emoji: "👍" },

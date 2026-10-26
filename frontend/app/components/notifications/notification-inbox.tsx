@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "./api";
+import { api } from "../api";
 import styles from "./notification-inbox.module.css";
 type Item = { id: string; postId: string; kind: string; message: string; createdAt: string; readAt: string | null; removed: boolean };
 type Inbox = { unreadCount: number; reactionPeople: number; commentPeople: number; items: Item[] };

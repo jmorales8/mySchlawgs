@@ -7,7 +7,7 @@ import { useAccount } from "../../components/account-provider";
 import { api } from "../../components/api";
 import styles from "./profiles.module.css";
 import CatalogInput from "./catalog-input";
-import ProfileCropper from "../../components/profile-cropper";
+import ProfileCropper from "../../components/photos/profile-cropper";
 
 type Animal = { id: string; name: string; animalType: string; breed: string; age: number; ageUnit: string; funFact: string; profilePhotoUrl: string | null };
 type Draft = Omit<Animal, "id" | "age" | "profilePhotoUrl"> & { age: string };

@@ -4,6 +4,11 @@ ASP.NET Core 10 + PostgreSQL, with username/password accounts, cookie sessions, 
 
 ## Local setup
 
+For PostgreSQL through Docker, follow the [Docker setup in the root README](../README.md#docker-database-recommended-for-local-development).
+`npm run dev:docker` supplies the Docker connection and applies migrations
+without changing your saved connection string. The instructions below are
+for an existing PostgreSQL installation.
+
 Configure the existing database connection using .NET user secrets from `backend`:
 
 ```powershell

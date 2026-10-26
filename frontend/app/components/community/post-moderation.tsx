@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { api } from "./api";
+import { api } from "../api";
 import styles from "./post-social.module.css";
-import { useAccount } from "./account-provider";
+import { useAccount } from "../account-provider";
 
 export default function PostModeration({ postId, userId, canModerate, reported, onRemoved }: { postId: string; userId: string | null; canModerate: boolean; reported: boolean; onRemoved: () => Promise<void> }) {
   const [mode, setMode] = useState<"report" | "remove" | null>(null);

@@ -5,3 +5,7 @@ node_modules/
 # Generated .NET build output
 **/bin/
 **/obj/
+
+# Private local credentials and database snapshots
+.env
+backups/

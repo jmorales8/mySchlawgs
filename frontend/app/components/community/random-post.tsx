@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "./api";
+import { api } from "../api";
 import styles from "./community.module.css";
 
 const choices = [

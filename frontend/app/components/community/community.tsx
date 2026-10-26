@@ -4,53 +4,22 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import styles from "./community.module.css";
 import Link from "next/link";
-import { api } from "./api";
+import { api } from "../api";
 import { FeedCache } from "./feed-cache";
-import PostSocial from "./post-social";
 import RandomPost from "./random-post";
-import NotificationBell from "./notification-bell";
-import ProfileCropper from "./profile-cropper";
-import PhotoFocus from "./photo-focus";
-import PhotoEditor from "./photo-editor";
-import Captcha from "./captcha";
-import { TutorialLink, useTutorial } from "./tutorial";
-import { groupPhotoBatches } from "./photo-batches";
-import { useAccount, type User } from "./account-provider";
+import NotificationBell from "../notifications/notification-bell";
+import ProfileCropper from "../photos/profile-cropper";
+import PhotoEditor from "../photos/photo-editor";
+import Captcha from "../captcha";
+import { TutorialLink, useTutorial } from "../tutorial/tutorial";
+import { groupPhotoBatches } from "../photos/photo-batches";
+import { useAccount, type User } from "../account-provider";
+import Avatar from "../shared/avatar";
+import FeedSkeleton from "./feed-skeleton";
+import PhotoCard from "./photo-card";
+import type { Photo } from "./types";
 
-type Photo = { id: string; postId?: string | null; batchId?: string | null; batchPosition?: number; downloadUrl: string; description: string; ownerId: string | null; username: string | null; profilePhotoUrl: string | null; uploadedAt: string };
 type Draft = { file: File; url: string; description: string };
-
-function Avatar({ user }: { user: { username: string | null; profilePhotoUrl: string | null } }) {
-  return user.profilePhotoUrl ? <img className={styles.avatar} src={user.profilePhotoUrl} alt={`${user.username}'s profile`} /> : <span className={styles.avatar}>{user.username?.[0]?.toUpperCase() ?? "S"}</span>;
-}
-
-function FeedSkeleton({ single = false }: { single?: boolean }) {
-  return <div className={styles.feed} role="status" aria-label="Loading posts">
-    <span className={styles.srOnly}>Loading moments…</span>
-    {Array.from({ length: single ? 1 : 2 }, (_, index) => <div key={index} className={styles.photoCard} aria-hidden="true">
-      <header><span className={`${styles.skeleton} ${styles.skeletonAvatar}`} /><div className={styles.skeletonByline}><span className={`${styles.skeleton} ${styles.skeletonLine}`} /><span className={`${styles.skeleton} ${styles.skeletonShort}`} /></div></header>
-      <div className={`${styles.skeleton} ${styles.skeletonPhoto}`} />
-      <div className={styles.skeletonCaption}><span className={`${styles.skeleton} ${styles.skeletonLine}`} /><span className={`${styles.skeleton} ${styles.skeletonShort}`} /></div>
-      <div className={styles.skeletonActions}>{[0, 1, 2].map(item => <span key={item} className={`${styles.skeleton} ${styles.skeletonLine}`} />)}</div>
-    </div>)}
-  </div>;
-}
-
-function FeedImage({ photo }: { photo: Photo }) {
-  const [state, setState] = useState<"loading" | "ready" | "error">("loading");
-  const imageRef = useCallback((image: HTMLImageElement | null) => {
-    if (image?.complete && image.naturalWidth > 0) setState("ready");
-  }, []);
-  return <div className={styles.photoFrame}>
-    {state === "loading" && <span className={`${styles.skeleton} ${styles.imagePlaceholder}`} aria-hidden="true" />}
-    <img ref={imageRef}
-      className={`${styles.photo} ${styles.feedImage} ${state === "ready" ? styles.imageReady : ""}`}
-      loading="lazy" decoding="async" draggable={false} src={photo.downloadUrl}
-      onLoad={() => setState("ready")} onError={() => setState("error")}
-      alt={photo.description || `An animal photo shared by ${photo.username ?? "the schlawgs"}`} />
-    {state === "error" && <span className={styles.imageError}>This photo couldn’t load. Open it to try again.</span>}
-  </div>;
-}
 
 export default function Community({ postId, discovery }: { postId?: string; discovery?: "popular" | "niche" | "relevant" }) {
   const openTutorial = useTutorial();
@@ -186,7 +155,7 @@ export default function Community({ postId, discovery }: { postId?: string; disc
             }
           }}>
             <summary className={styles.accountTrigger} aria-label={`Account options for ${user.username}`}>
-              <Avatar user={user} /><span className={styles.hamburger} aria-hidden="true"><span /><span /><span /></span>
+              <Avatar user={user} className={styles.avatar} /><span className={styles.hamburger} aria-hidden="true"><span /><span /><span /></span>
             </summary>
             <div className={styles.accountDropdown}>
             <strong className={styles.accountName}>@{user.username}</strong><Link href="/account/animals">My VERY OWN Schlawgs</Link>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}
@@ -243,69 +212,3 @@ export default function Community({ postId, discovery }: { postId?: string; disc
     </div><footer className={styles.footer}><strong>mySchlawgs</strong><Link href="/our-mission">Our mission</Link><TutorialLink /><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy</Link><span></span></footer>
   </main>;
 }
-
-function PhotoCard({ photos, owner, onSaved, userId }: { photos: Photo[]; userId: string | null; owner: boolean; onSaved: () => Promise<void> }) {
-  const [focusIndex, setFocusIndex] = useState<number | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [editingCaption, setEditingCaption] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const index = Math.min(activeIndex, photos.length - 1);
-  const photo = photos[index];
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    let width = track.clientWidth;
-    const observer = new ResizeObserver(() => {
-      if (track.clientWidth === width) return;
-      width = track.clientWidth;
-      track.scrollTo({ left: index * track.clientWidth, behavior: "instant" });
-    });
-    observer.observe(track);
-    return () => observer.disconnect();
-  }, [index]);
-  function navigateTo(next: number) {
-    if (editingCaption) return;
-    const track = trackRef.current;
-    if (track) track.scrollTo({ left: next * track.clientWidth, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-  }
-  function navigate(direction: number) { navigateTo((index + direction + photos.length) % photos.length); }
-  return <article className={`${styles.photoCard} ${styles.postReveal}`} aria-roledescription={photos.length > 1 ? "carousel" : undefined} aria-label={`Photos by ${photo.username ?? "the schlawgs"}`}>
-    {focusIndex !== null && <PhotoFocus photos={photos} initialIndex={focusIndex} onClose={next => { setFocusIndex(null); setActiveIndex(next); trackRef.current?.scrollTo({ left: next * trackRef.current.clientWidth, behavior: "instant" }); }} />}
-    <header><Avatar user={photo} /><div><strong>{photo.username ? `@${photo.username}` : "From the original shclawginsteins"}</strong><time dateTime={photo.uploadedAt}>{new Date(photo.uploadedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div></header>
-    <div className={styles.carousel} tabIndex={photos.length > 1 ? 0 : undefined} aria-label="Photo viewer. Use left and right arrow keys to browse." onKeyDown={event => {
-      if (editingCaption || photos.length < 2 || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
-      event.preventDefault(); navigate(event.key === "ArrowLeft" ? -1 : 1);
-    }}>
-      <div ref={trackRef} className={styles.carouselTrack} style={editingCaption ? { overflowX: "hidden" } : undefined} onScroll={event => {
-        const track = event.currentTarget;
-        if (track.clientWidth) setActiveIndex(Math.min(photos.length - 1, Math.max(0, Math.round(track.scrollLeft / track.clientWidth))));
-      }}>
-        {photos.map((item, slideIndex) => <button type="button" key={item.id} className={`${styles.carouselSlide} ${styles.openPhoto}`} onClick={() => setFocusIndex(slideIndex)} aria-label={`Open photo ${slideIndex + 1} in focus view`} aria-haspopup="dialog" disabled={editingCaption} tabIndex={slideIndex === index ? 0 : -1} aria-hidden={slideIndex !== index} draggable={false}>
-          <FeedImage key={item.downloadUrl} photo={item} />
-        </button>)}
-      </div>
-      {photos.length > 1 && <>
-        <button type="button" className={`${styles.carouselArrow} ${styles.previous}`} aria-label="Previous photo" disabled={editingCaption} onClick={() => navigate(-1)}>‹</button>
-        <button type="button" className={`${styles.carouselArrow} ${styles.next}`} aria-label="Next photo" disabled={editingCaption} onClick={() => navigate(1)}>›</button>
-        <span className={styles.slideCount} aria-live="polite" aria-atomic="true">{index + 1} / {photos.length}</span>
-      </>}
-    </div>
-    {photos.length > 1 && <div className={styles.carouselDots} aria-label="Choose a photo">{photos.map((item, slideIndex) => <button key={item.id} type="button" aria-label={`Go to photo ${slideIndex + 1}`} aria-pressed={slideIndex === index} disabled={editingCaption} onClick={() => navigateTo(slideIndex)}><span /></button>)}</div>}
-    <PhotoCaption key={`${photo.id}-${owner}`} photo={photo} owner={owner} onSaved={onSaved} onEditingChange={setEditingCaption} />
-    <PostSocial key={userId ?? "guest"} postId={photos[0].postId ?? photos[0].batchId ?? photos[0].id} userId={userId} photoId={photo.id} slideNumber={index + 1} postAuthor={photos[0]} onRemoved={onSaved} />
-  </article>;
-}
-
-function PhotoCaption({ photo, owner, onSaved, onEditingChange }: { photo: Photo; owner: boolean; onSaved: () => Promise<void>; onEditingChange: (editing: boolean) => void }) {
-  useEffect(() => () => onEditingChange(false), [onEditingChange]);
-  const [editing, setEditing] = useState(false);
-  const [description, setDescription] = useState(photo.description);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  return <div className={styles.caption} aria-live="polite">{editing ? <form onSubmit={async e => { e.preventDefault(); setBusy(true); setError(""); try { await api(`/api/photos/${photo.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ description }) }); await onSaved(); setEditing(false); onEditingChange(false); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}><label>Description<textarea value={description} maxLength={2000} disabled={busy} onChange={e => setDescription(e.target.value)} /></label><button disabled={busy}>{busy ? "Saving…" : "Save description"}</button><button type="button" className={styles.textButton} disabled={busy} onClick={() => { setEditing(false); onEditingChange(false); }}>Cancel</button>{error && <p role="alert">{error}</p>}</form> : <>{photo.description && <p>{photo.description}</p>}{owner && <button className={styles.textButton} onClick={() => { setDescription(photo.description); setError(""); setEditing(true); onEditingChange(true); }}>{photo.description ? "Edit description" : "Add a description"}</button>}</>}</div>;
-}
-
-
-
-
-

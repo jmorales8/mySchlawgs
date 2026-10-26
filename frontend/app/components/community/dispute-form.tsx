@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { api } from "./api";
+import { api } from "../api";
 export default function DisputeForm({ id, review = false, onSaved }: { id: string; review?: boolean; onSaved: () => Promise<void> }) {
   const [text, setText] = useState("");
   const [accept, setAccept] = useState(false);

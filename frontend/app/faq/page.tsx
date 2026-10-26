@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import InfoPage from "../components/info-page";
-import FAQAccordion from "../components/faq-accordion";
+import InfoPage from "../components/information/info-page";
+import FAQAccordion from "../components/information/faq-accordion";
 
 export const metadata: Metadata = { title: "FAQ | mySchlawgs", description: "Sharing photos, protecting your privacy, and being a good neighbor on mySchlawgs." };
 

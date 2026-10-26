@@ -1,4 +1,4 @@
-import { invalidateFeeds } from "./feed-cache";
+import { invalidateFeeds } from "./community/feed-cache";
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(path, { ...options, cache: "no-store", headers: { "X-Schlawgs-Request": "1", ...options.headers } });

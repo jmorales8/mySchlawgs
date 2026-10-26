@@ -6,7 +6,11 @@
     "dev": "concurrently --kill-others --names frontend,backend --prefix-colors cyan,green \"npm run dev:frontend\" \"npm run dev:backend\"",
     "dev:frontend": "node scripts/wait-for-backend.mjs && npm --prefix frontend run dev -- --port 3000",
     "dev:backend": "dotnet watch --project backend/backend.csproj run --launch-profile http",
-    "setup": "npm install && npm --prefix frontend install"
+    "setup": "npm install && npm --prefix frontend install",
+    "db:up": "node scripts/docker-dev.mjs up",
+    "db:setup": "node scripts/docker-dev.mjs setup",
+    "db:stop": "node scripts/docker-dev.mjs stop",
+    "dev:docker": "node scripts/docker-dev.mjs dev"
   },
   "devDependencies": {
     "concurrently": "^9.2.4"

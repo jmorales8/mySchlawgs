@@ -1,4 +1,4 @@
-import SiteFooter from "../components/site-footer";
+import SiteFooter from "../components/information/site-footer";
 import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "./page.module.css";

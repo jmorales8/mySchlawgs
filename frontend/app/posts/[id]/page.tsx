@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Community from "../../components/community";
+import Community from "../../components/community/community";
 
 export const metadata: Metadata = {
   title: "A moment worth sharing | mySchlawgs",

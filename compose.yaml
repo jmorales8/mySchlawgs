@@ -1,0 +1,21 @@
+name: myschlawgs
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: myschlawgs
+      POSTGRES_USER: myschlawgs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run db:up to generate local credentials}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myschlawgs -d myschlawgs"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres_data:

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "../components/api";
-import PostModeration from "../components/post-moderation";
-import DisputeForm from "../components/dispute-form";
-import styles from "../components/community.module.css";
+import PostModeration from "../components/community/post-moderation";
+import DisputeForm from "../components/community/dispute-form";
+import styles from "../components/community/community.module.css";
 
 type Entry = { id: string; username: string | null; removedAt: string | null; removalReason: string | null; reportCount: number; reports: { reason: string; details: string; createdAt: string }[]; photos: { id: string; description: string }[]; disputes: { id: string; explanation: string; status: string; decisionReason: string | null }[] };
 export default function ModerationPage() {

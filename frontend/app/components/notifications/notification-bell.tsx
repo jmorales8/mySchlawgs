@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api } from "./api";
+import { api } from "../api";
 import NotificationInbox from "./notification-inbox";
 import styles from "./notification-inbox.module.css";
 export default function NotificationBell({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }) {
