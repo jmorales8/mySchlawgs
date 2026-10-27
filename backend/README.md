@@ -49,6 +49,8 @@ All POST/PATCH requests require `X-Schlawgs-Request: 1`. Browser traffic uses th
 | GET | /api/photos/{id} | Public image bytes |
 | POST | /api/photos | Authenticated multipart upload; repeated files and descriptions fields, in matching order |
 | PATCH | /api/photos/{id} | Owner only; JSON description |
+| PATCH | /api/posts/{id}/comments/{commentId} | Comment author only; JSON body, 1–2,000 characters; works for comments and replies |
+| PUT / DELETE | /api/posts/{id}/comments/{commentId}/reaction | Set JSON kind (`like`, `love`, or `laugh`), or remove your reaction |
 | POST | /api/profile/photo | Authenticated multipart upload with one image; returns updated account |
 
 Uploads support JPEG, PNG, GIF, and WebP, with signature checks. Up to 10 photos per batch, 10 MB per file, 50 MB combined. Each description is optional (send an empty field) and limited to 2,000 characters. Invalid batches save nothing. Profile images are excluded from the feed. Images are stored in PostgreSQL bytea columns. The initial feed returns all metadata; pagination and object storage are future scaling work.
@@ -69,6 +71,13 @@ Run the focused metadata checks with:
 ```powershell
 dotnet run --project tests/SmokeTests.csproj -c Release -- --images-only
 ```
+
+## Comment reactions
+
+Comment and reply reactions allow one choice per account, with atomic replacement.
+Existing `comment_likes` records are preserved as `like` by the CommentReactions
+migration. Activity responses include counts by kind, the viewer's choice, and
+the post author's reaction. The older `/like` endpoints remain supported.
 
 ## Reported post visibility
 

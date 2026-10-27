@@ -39,11 +39,73 @@
 .social .quoteAction:disabled { opacity: .65; cursor: default; }
 .authorLike { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: #526048; font-size: 12px; line-height: 1.5; }
 .authorAvatar { display: inline-grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: #dce1d3; color: #354431; font-size: 12px; }
-.commentActions { display: flex; gap: 16px; margin-top: 6px; }
+.commentActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.social .commentActions > button, .social .commentReactionControl > button { min-height: 32px; padding: 6px 11px; border-radius: 8px; font-size: 12px; text-decoration: none; }
+.commentReactionControl { position: relative; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.commentReactionCounts { display: inline-flex; gap: 8px; align-items: center; font-size: 12px; color: #526048; }
+.social .likeAction { color: #86314e; background: #f9eaf0; border: 1px solid #dcb5c3; }
+.social .likeAction[aria-pressed=true] { color: #fff; background: #86314e; border-color: #86314e; }
+.social .replyAction { color: #405337; background: #e1e7d9; border: 1px solid #bbc7b0; }
+.social .replyAction[aria-expanded=true] { background: #cdd9c2; border-color: #637257; }
+.commentManagement { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding-top: 8px; border-top: 1px solid #d6d7c9; }
+.social .commentManagement .removeAction { color: #963b30; }
+.commentManagement .confirm button:first-of-type { background: #963b30; color: #fff; border-color: #963b30; }
 .reply { border-left: 2px solid #b4bea6; }
 .replyContext { display: block; color: #637257; font-size: 12px; margin-bottom: 8px; }
+.replyTarget { outline: 2px solid #637257; outline-offset: 2px; background: #f3f3e9; }
+.comments .replyComposer { border-top: 1px solid #b4bea6; margin-top: 14px; padding-top: 14px; }
+.replyComposer label { color: #405337; font-size: 13px; }
+.composerActions { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin-top: 12px; }
 .moderation { border-top: 1px solid #d6d7c9; padding-top: 12px; margin-top: 16px; font-size: 13px; }
 .moderation > button { margin-right: 16px; }
 .moderation form { margin-top: 12px; }
 .moderation select { width: 100%; margin: 8px 0 16px; padding: 10px; border: 1px solid #c6cbbd; border-radius: 7px; background: #fffdf8; color: #273025; }
 .moderation form > button { margin: 12px 12px 0 0; }
+
+.social .actions > button,
+.social .reactionControl > button,
+.social .commentActions > button,
+.social .commentReactionControl > button,
+.social .picker button {
+  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease;
+}
+.social .actions > button:not(:disabled):is(:hover, :focus-visible),
+.social .reactionControl > button:not(:disabled):is(:hover, :focus-visible) {
+  background: #daddd6;
+  border-color: #a9afa2;
+}
+.social .reactionControl > button[data-reaction=like] { color: #245372; background: #e4eef5; border-color: #b1c6d7; }
+.social .reactionControl > button[data-reaction=love] { color: #86314e; background: #f9eaf0; border-color: #dcb5c3; }
+.social .reactionControl > button[data-reaction=laugh] { color: #72521d; background: #f6edda; border-color: #d7c498; }
+.social .reactionControl > button[data-reaction=like]:not(:disabled):is(:hover, :focus-visible) { background: #d5e0e8; border-color: #93adbf; }
+.social .reactionControl > button[data-reaction=love]:not(:disabled):is(:hover, :focus-visible) { background: #e9dce2; border-color: #bd9aa8; }
+.social .reactionControl > button[data-reaction=laugh]:not(:disabled):is(:hover, :focus-visible) { background: #e7e0d0; border-color: #bdad89; }
+.social .likeAction:not(:disabled):is(:hover, :focus-visible) {
+  background: #e9dce2;
+  border-color: #bd9aa8;
+}
+.social .likeAction[aria-pressed=true]:not(:disabled):is(:hover, :focus-visible) {
+  background: #704356;
+  border-color: #704356;
+}
+.social .commentReactionControl > button[data-reaction=like] { color: #245372; background: #e4eef5; border-color: #b1c6d7; }
+.social .commentReactionControl > button[data-reaction=love] { color: #86314e; background: #f9eaf0; border-color: #dcb5c3; }
+.social .commentReactionControl > button[data-reaction=laugh] { color: #72521d; background: #f6edda; border-color: #d7c498; }
+.social .commentReactionControl > button[data-reaction=like]:not(:disabled):is(:hover, :focus-visible) { background: #d5e0e8; border-color: #93adbf; }
+.social .commentReactionControl > button[data-reaction=love]:not(:disabled):is(:hover, :focus-visible) { background: #e9dce2; border-color: #bd9aa8; }
+.social .commentReactionControl > button[data-reaction=laugh]:not(:disabled):is(:hover, :focus-visible) { background: #e7e0d0; border-color: #bdad89; }
+.social .replyAction:not(:disabled):is(:hover, :focus-visible) {
+  background: #d4d9cf;
+  border-color: #a5af9b;
+}
+.social .picker button:not(:disabled):is(:hover, :focus-visible) {
+  background: #deded5;
+  border-color: #b3b8a9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .social .actions > button,
+  .social .reactionControl > button,
+  .social .commentActions > button,
+  .social .commentReactionControl > button,
+  .social .picker button { transition: none; }
+}

@@ -89,8 +89,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         comment.HasKey(x => x.Id);
         comment.HasOne<PostComment>().WithMany().HasForeignKey(x => x.ParentCommentId).OnDelete(DeleteBehavior.SetNull);
         var like = modelBuilder.Entity<CommentLike>();
-        like.ToTable("comment_likes");
+        like.ToTable("comment_likes", table => table.HasCheckConstraint("CK_comment_reaction_kind", "\"Kind\" IN ('like', 'love', 'laugh')"));
         like.HasKey(x => new { x.CommentId, x.UserId });
+        like.Property(x => x.Kind).HasMaxLength(10).HasDefaultValue("like");
         like.HasOne<PostComment>().WithMany().HasForeignKey(x => x.CommentId).OnDelete(DeleteBehavior.Cascade);
         like.HasOne<AppUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         comment.HasOne(x => x.Photo).WithMany().HasForeignKey(x => x.PhotoId).OnDelete(DeleteBehavior.SetNull);

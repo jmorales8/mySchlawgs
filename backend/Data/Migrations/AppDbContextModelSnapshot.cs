@@ -511,11 +511,21 @@ namespace backend.Data.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("like");
+
                     b.HasKey("CommentId", "UserId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("comment_likes", (string)null);
+                    b.ToTable("comment_likes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_comment_reaction_kind", "\"Kind\" IN ('like', 'love', 'laugh')");
+                        });
                 });
 
             modelBuilder.Entity("Backend.Models.Notification", b =>

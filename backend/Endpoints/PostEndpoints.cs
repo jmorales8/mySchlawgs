@@ -10,6 +10,7 @@ public static class PostEndpoints
 {
     public sealed record ReactionInput(string? Kind);
     public sealed record CommentInput(string? Body, Guid? PhotoId, Guid? ParentCommentId);
+    public sealed record EditCommentInput(string? Body);
     public sealed record QuoteInput(Guid? CommentId);
     private static Guid? Viewer(HttpContext context) => Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
@@ -68,11 +69,20 @@ public static class PostEndpoints
                 .Select(r => new { r.UserId, r.User.Username, r.Kind }).ToListAsync(ct);
             var comments = await db.Comments.AsNoTracking().Where(c => c.PostId == id).OrderBy(c => c.CreatedAt).ThenBy(c => c.Id)
                 .Select(c => new { c.Id, c.AuthorId, c.Author.Username, c.Body, c.CreatedAt, c.PhotoId, c.ParentCommentId, c.IsReply,
-                    likeCount = db.CommentLikes.Count(l => l.CommentId == c.Id),
-                    likedByMe = viewerId != null && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == viewerId),
-                    likedByPostAuthor = post.OwnerId != null && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == post.OwnerId),
+                    likeCount = db.CommentLikes.Count(l => l.CommentId == c.Id && l.Kind == "like"),
+                    likedByMe = viewerId != null && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == viewerId && l.Kind == "like"),
+                    likedByPostAuthor = post.OwnerId != null && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == post.OwnerId && l.Kind == "like"),
+                    reactionCount = db.CommentLikes.Count(l => l.CommentId == c.Id),
+                    reactionCounts = new[] {
+                        new { kind = "like", count = db.CommentLikes.Count(l => l.CommentId == c.Id && l.Kind == "like") },
+                        new { kind = "love", count = db.CommentLikes.Count(l => l.CommentId == c.Id && l.Kind == "love") },
+                        new { kind = "laugh", count = db.CommentLikes.Count(l => l.CommentId == c.Id && l.Kind == "laugh") }
+                    },
+                    myReaction = db.CommentLikes.Where(l => l.CommentId == c.Id && l.UserId == viewerId).Select(l => l.Kind).FirstOrDefault(),
+                    postAuthorReaction = db.CommentLikes.Where(l => l.CommentId == c.Id && l.UserId == post.OwnerId).Select(l => l.Kind).FirstOrDefault(),
                     slideNumber = c.Photo == null ? (int?)null : c.Photo.BatchPosition + 1,
                     profilePhotoUrl = c.Author.ProfilePhotoId == null ? null : $"/api/photos/{c.Author.ProfilePhotoId}",
+                    canEdit = viewerId != null && c.AuthorId == viewerId,
                     canDelete = viewerId != null && (c.AuthorId == viewerId || post.OwnerId == viewerId || admin) }).ToListAsync(ct);
             var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && p.BestQuoteCommentId != null)
                 .Select(p => new { photoId = p.Id, commentId = p.BestQuoteCommentId }).ToListAsync(ct);
@@ -136,6 +146,20 @@ public static class PostEndpoints
             return Results.Created($"/api/posts/{id}/activity", new { comment.Id });
         }).RequireAuthorization().RequireRateLimiting("social");
 
+        group.MapPatch("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, EditCommentInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            if (string.IsNullOrWhiteSpace(input.Body) || input.Body.Length > 2000)
+                return Results.BadRequest(new { message = "Write a comment between 1 and 2,000 characters." });
+            var userId = Viewer(context)!.Value;
+            if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
+            var comment = await db.Comments.AsNoTracking().SingleOrDefaultAsync(c => c.Id == commentId && c.PostId == id, ct);
+            if (comment == null) return Results.NotFound();
+            // Removing someone else's comment is a moderation action; editing is author-only.
+            if (comment.AuthorId != userId) return Results.Forbid();
+            var changed = await db.Comments.Where(c => c.Id == commentId && c.PostId == id && c.AuthorId == userId)
+                .ExecuteUpdateAsync(update => update.SetProperty(c => c.Body, input.Body.Trim()), ct);
+            return changed == 0 ? Results.NotFound() : Results.NoContent();
+        }).RequireAuthorization().RequireRateLimiting("social");
+
         group.MapPut("/{id:guid}/photos/{photoId:guid}/quote", async (Guid id, Guid photoId, QuoteInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             var post = await db.Posts.AsNoTracking().SingleOrDefaultAsync(p => p.Id == id, ct);
             if (post is null) return Results.NotFound();
@@ -176,24 +200,41 @@ public static class PostEndpoints
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
 
-        group.MapPut("/{id:guid}/comments/{commentId:guid}/like", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
-            var viewerId = Viewer(context)!.Value;
-            if (!await db.Users.AnyAsync(u => u.Id == viewerId, ct)) return Results.Unauthorized();
-            if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            try {
-                await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO comment_likes (\"CommentId\", \"UserId\") VALUES ({commentId}, {viewerId}) ON CONFLICT DO NOTHING", ct);
-            } catch (Npgsql.PostgresException ex) when (ex.SqlState == "23503") { return Results.NotFound(); }
-            var author = await db.Comments.Where(c => c.Id == commentId).Select(c => (Guid?)c.AuthorId).SingleOrDefaultAsync(ct);
-            await NotificationEndpoints.Notify(db, author, viewerId, id, $"comment-like:{commentId}:{viewerId}", "comment-like", $"@{context.User.Identity!.Name} liked your comment.", ct);
-            await transaction.CommitAsync(ct);
-            return Results.NoContent();
+        group.MapPut("/{id:guid}/comments/{commentId:guid}/reaction", async (Guid id, Guid commentId, ReactionInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            if (input.Kind is not ("like" or "love" or "laugh")) return Results.BadRequest(new { message = "Choose Like, Love, or Laugh." });
+            return await SetCommentReaction(id, commentId, input.Kind, db, context, ct);
         }).RequireAuthorization().RequireRateLimiting("social");
-        group.MapDelete("/{id:guid}/comments/{commentId:guid}/like", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
-            if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
+        group.MapDelete("/{id:guid}/comments/{commentId:guid}/reaction", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            if (!await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
             var viewerId = Viewer(context);
             await db.CommentLikes.Where(l => l.CommentId == commentId && l.UserId == viewerId).ExecuteDeleteAsync(ct);
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
+
+        // Keep existing clients' Like endpoints working while the picker uses /reaction.
+        group.MapPut("/{id:guid}/comments/{commentId:guid}/like", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) =>
+            await SetCommentReaction(id, commentId, "like", db, context, ct)).RequireAuthorization().RequireRateLimiting("social");
+        group.MapDelete("/{id:guid}/comments/{commentId:guid}/like", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
+            var viewerId = Viewer(context);
+            await db.CommentLikes.Where(l => l.CommentId == commentId && l.UserId == viewerId && l.Kind == "like").ExecuteDeleteAsync(ct);
+            return Results.NoContent();
+        }).RequireAuthorization().RequireRateLimiting("social");
+    }
+
+    private static async Task<IResult> SetCommentReaction(Guid id, Guid commentId, string kind, AppDbContext db, HttpContext context, CancellationToken ct)
+    {
+        var viewerId = Viewer(context)!.Value;
+        if (!await db.Users.AnyAsync(u => u.Id == viewerId, ct)) return Results.Unauthorized();
+        if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try {
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO comment_likes (\"CommentId\", \"UserId\", \"Kind\") VALUES ({commentId}, {viewerId}, {kind}) ON CONFLICT (\"CommentId\", \"UserId\") DO UPDATE SET \"Kind\" = EXCLUDED.\"Kind\"", ct);
+        } catch (Npgsql.PostgresException ex) when (ex.SqlState == "23503") { return Results.NotFound(); }
+        var author = await db.Comments.Where(c => c.Id == commentId).Select(c => (Guid?)c.AuthorId).SingleOrDefaultAsync(ct);
+        var action = kind == "like" ? "liked" : kind == "love" ? "loved" : "laughed at";
+        await NotificationEndpoints.Notify(db, author, viewerId, id, $"comment-like:{commentId}:{viewerId}", "comment-like", $"@{context.User.Identity!.Name} {action} your comment.", ct);
+        await transaction.CommitAsync(ct);
+        return Results.NoContent();
     }
 }

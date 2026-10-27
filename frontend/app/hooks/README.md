@@ -21,7 +21,9 @@ manual retry. A failed refresh hides previously cached records so a removed
 post or unauthorized view does not stay visible.
 
 During this incremental migration, successful writes through `api()` notify
-the provider to invalidate API queries. This includes existing upload,
-reporting, moderation, and notification actions. Query functions use GET and
+the provider to invalidate API queries. Reaction changes mark feeds stale for
+their next visit/focus and refresh notification data, without refetching the
+visible feed. Marking notifications read refreshes notifications only. Uploads,
+edits, reports, and moderation actions still refresh immediately. Query functions use GET and
 never emit that event. Forms, drafts, dialogs, and write errors remain local
 component state. Post activity and account loading are not migrated yet.

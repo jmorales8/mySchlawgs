@@ -7,7 +7,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     throw new Error(body.message ?? (body.errors ? Object.values(body.errors).flat().join(" ") : response.status === 401 ? "Please log in to continue." : response.status === 429 ? "Too many attempts. Try again in a minute." : "Something went wrong. Please try again."));
   }
   if ((options.method ?? "GET").toUpperCase() !== "GET" && typeof window !== "undefined") {
-    window.dispatchEvent(new Event(API_CHANGED));
+    window.dispatchEvent(new CustomEvent(API_CHANGED, { detail: { path, method: (options.method ?? "GET").toUpperCase() } }));
   }
   return response.status === 204 ? undefined as T : response.json();
 }
