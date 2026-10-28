@@ -9,3 +9,9 @@ node_modules/
 # Private local credentials and database snapshots
 .env
 backups/
+
+# Local AI design tools and generated previews
+.agents/skills/impeccable/
+.codex/
+.impeccable/
+design-previews/

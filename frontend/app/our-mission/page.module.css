@@ -1,27 +1,27 @@
-.page { color: #273025; background: radial-gradient(circle at 90% 5%, #eac8b766, transparent 30%), #f1eee4; min-height: 100vh; }
-.nav { max-width: 1180px; margin: auto; padding: 25px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid #27302530; }
+.page { color: var(--foreground); background: radial-gradient(circle at 90% 5%, #eac8b766, transparent 30%), var(--background); min-height: 100vh; }
+.nav { max-width: 1180px; margin: auto; padding: 25px 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; border-bottom: 1px solid #402d3e30; }
 .nav a { color: inherit; text-decoration: none; font-size: 13px; }
 .nav .brand { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: -.6px; }
-.brand span { display: grid; place-items: center; border-radius: 45%; width: 34px; height: 34px; background: #303b2d; color: #f1eee4; font: 24px Georgia, serif; transform: rotate(-7deg); }
+.brand span { display: grid; place-items: center; border-radius: 45%; width: 34px; height: 34px; background: var(--accent); color: var(--background); font: 24px Georgia, serif; transform: rotate(-7deg); }
 .main { width: calc(100% - 48px); max-width: 800px; margin: auto; }
 .hero { padding: 90px 0 76px; max-width: 920px; }
-.eyebrow { color: #a9472e; font: 600 10px/1.5 var(--font-geist-mono), monospace; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 24px; }
+.eyebrow { color: var(--accent); font: 600 10px/1.5 var(--font-geist-mono), monospace; letter-spacing: 2px; text-transform: uppercase; margin: 0 0 24px; }
 .hero h1 { font: 400 clamp(48px, 7vw, 90px)/.98 Georgia, serif; letter-spacing: -.05em; margin: 0 0 32px; }
-.intro { max-width: 600px; color: #626b5a; font-size: 20px; line-height: 1.65; }
-.story { border-top: 1px solid #27302530; padding: 42px 0; }
+.intro { max-width: 600px; color: var(--muted); font-size: 20px; line-height: 1.65; }
+.story { border-top: 1px solid #402d3e30; padding: 42px 0; }
 .page h2 { font: 400 34px/1.15 Georgia, serif; letter-spacing: -.03em; margin: 0 0 20px; }
-.story p:not(.eyebrow), .points { font-size: 16px; line-height: 1.85; color: #626b5a; }
+.story p:not(.eyebrow), .points { font-size: 16px; line-height: 1.85; color: var(--muted); }
 .story p:not(.eyebrow) { margin: 0 0 18px; }
 .story p:last-child { margin-bottom: 0; }
 .points { list-style: disc; padding-left: 24px; margin: 24px 0 0; }
 .points li { padding-left: 6px; margin-bottom: 18px; }
 .points li:last-child { margin-bottom: 0; }
-.points li::marker { color: #a9472e; }
-.points strong { color: #273025; font-weight: 600; }
-.invitation { padding: 48px 0 64px; margin-bottom: 16px; border-top: 1px solid #27302530; }
+.points li::marker { color: var(--accent); }
+.points strong { color: var(--foreground); font-weight: 600; }
+.invitation { padding: 48px 0 64px; margin-bottom: 16px; border-top: 1px solid #402d3e30; }
 .invitation h2 { font-size: clamp(36px, 5vw, 58px); }
-.invitation > p:not(.eyebrow) { max-width: 600px; margin: 0 0 28px; line-height: 1.8; color: #526048; }
-.invitation a { display: inline-flex; gap: 24px; padding: 14px 22px; border-radius: 7px; color: #fffdf8; background: #303b2d; text-decoration: none; font-size: 13px; font-weight: 600; }
-.page a:focus-visible { outline: 3px solid #bb4d31; outline-offset: 5px; }
+.invitation > p:not(.eyebrow) { max-width: 600px; margin: 0 0 28px; line-height: 1.8; color: var(--link); }
+.invitation a { display: inline-flex; gap: 24px; padding: 14px 22px; border-radius: 7px; color: var(--on-accent); background: var(--accent); text-decoration: none; font-size: 13px; font-weight: 600; }
+.page a:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
 @media (max-width: 1240px) { .nav { margin-left: 24px; margin-right: 24px; } }
 @media (max-width: 760px) { .nav { margin-left: 16px; margin-right: 16px; } .main { width: calc(100% - 32px); } .hero { padding: 56px 0 40px; } .intro { font-size: 18px; } .story { padding: 32px 0; } .page h2 { font-size: 29px; } .points { padding-left: 20px; } .invitation { padding: 36px 0 40px; } }

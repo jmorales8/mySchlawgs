@@ -1,14 +1,14 @@
-.page { min-height: 100vh; background: #f1eee4; color: #273025; }
-.nav { max-width: 1180px; margin: auto; padding: 26px 24px; display: flex; justify-content: space-between; gap: 20px; border-bottom: 1px solid #d6d7c9; }
+.page { min-height: 100vh; background: var(--background); color: var(--foreground); }
+.nav { max-width: 1180px; margin: auto; padding: 26px 24px; display: flex; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--border); }
 .nav a:first-child { font-weight: 700; font-size: 20px; text-decoration: none; }
 .page a { color: inherit; text-underline-offset: 4px; }
 .main { max-width: 850px; margin: auto; padding: 56px 24px 72px; }
-.eyebrow { color: #a9472e; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+.eyebrow { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
 .main h1 { font: 400 clamp(42px, 7vw, 64px)/1.1 Georgia, serif; margin: 20px 0; }
-.intro { color: #626b5a; font-size: 18px; line-height: 1.7; margin-bottom: 32px; }
-.main section, .main details { background: #faf8f1; border: 1px solid #d6d7c9; border-radius: 12px; padding: 22px; margin: 14px 0; }
+.intro { color: var(--muted); font-size: 18px; line-height: 1.7; margin-bottom: 32px; }
+.main section, .main details { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; margin: 14px 0; }
 .main h2 { font: 400 25px/1.2 Georgia, serif; margin: 0 0 14px; }
 .main p, .main li { line-height: 1.8; overflow-wrap: anywhere; }
 .main section p:last-child, .main details p:last-child { margin-bottom: 0; }
 .main summary { cursor: pointer; font-weight: 600; line-height: 1.5; }
-.page :is(a, summary):focus-visible { outline: 3px solid #bb4d31; outline-offset: 5px; }
+.page :is(a, summary):focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }

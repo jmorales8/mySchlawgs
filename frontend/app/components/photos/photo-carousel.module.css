@@ -100,7 +100,7 @@
 .kicker,
 .emptyLabel {
   margin: 0;
-  color: #bb4d31;
+  color: var(--accent);
   font: 650 0.7rem/1 var(--font-geist-mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@
   transition: width 180ms ease, background 180ms ease;
 }
 
-.pagination .activeDot { width: 52px; background: #bb4d31; }
+.pagination .activeDot { width: 52px; background: var(--accent); }
 
 .emptyState {
   display: grid;
@@ -163,7 +163,7 @@
   height: 220px;
   place-items: center;
   border: 1px dashed #a9a99c;
-  color: #bb4d31;
+  color: var(--accent);
   background: #e5e2d7;
   font: 300 3rem/1 Georgia, serif;
   transform: rotate(-3deg);

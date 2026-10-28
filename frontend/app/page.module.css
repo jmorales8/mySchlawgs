@@ -1,8 +1,8 @@
 .pageShell {
   min-height: 100vh;
   overflow: hidden;
-  color: #252c23;
-  background: radial-gradient(circle at 88% 12%, rgba(218, 126, 83, 0.17), transparent 25%), #f1eee4;
+  color: var(--foreground);
+  background: radial-gradient(circle at 88% 12%, rgba(218, 126, 83, 0.17), transparent 25%), var(--background);
 }
 
 .nav {
@@ -31,15 +31,15 @@
   height: 30px;
   place-items: center;
   border-radius: 50% 44% 52% 48%;
-  color: #f7f3e8;
-  background: #303b2d;
+  color: var(--on-accent);
+  background: var(--accent);
   font-family: Georgia, serif;
   font-size: 1rem;
   transform: rotate(-7deg);
 }
 
 .navLink {
-  color: #4f554b;
+  color: var(--muted);
   font: 600 0.7rem/1 var(--font-geist-mono);
   letter-spacing: 0.13em;
   text-decoration: none;
@@ -72,7 +72,7 @@
 
 .eyebrow {
   margin: 0 0 22px;
-  color: #bb4d31;
+  color: var(--accent);
   font: 650 0.7rem/1 var(--font-geist-mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -81,7 +81,7 @@
 .hero h1 {
   max-width: 850px;
   margin: 0;
-  color: #263025;
+  color: var(--foreground);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(4rem, 9.4vw, 8.3rem);
   font-weight: 400;
@@ -92,7 +92,7 @@
 .intro {
   max-width: 540px;
   margin: 36px 0 0 5px;
-  color: #666b61;
+  color: var(--muted);
   font-size: clamp(1rem, 2vw, 1.16rem);
   line-height: 1.7;
 }
@@ -103,8 +103,8 @@
   gap: 24px;
   margin-top: 36px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #303b2d;
-  color: #303b2d;
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent);
   font: 650 0.73rem/1 var(--font-geist-mono);
   letter-spacing: 0.12em;
   text-decoration: none;
@@ -128,7 +128,7 @@
 }
 
 .heroStamp span { font: 600 0.55rem/1 var(--font-geist-mono); letter-spacing: 0.15em; }
-.heroStamp strong { color: #bb4d31; font: 400 1.85rem/1 Georgia, serif; }
+.heroStamp strong { color: var(--accent); font: 400 1.85rem/1 Georgia, serif; }
 
 .gallerySection {
   padding: 100px max(24px, calc((100vw - 1180px) / 2)) 120px;
@@ -145,7 +145,7 @@
 
 .sectionHeader h2 {
   margin: 0;
-  color: #273025;
+  color: var(--foreground);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(2.7rem, 6vw, 5.2rem);
   font-weight: 400;
@@ -166,8 +166,8 @@
   justify-content: space-between;
   gap: 20px;
   padding: 32px max(24px, calc((100vw - 1180px) / 2));
-  color: #d8d9ce;
-  background: #2c352a;
+  color: var(--on-dark);
+  background: var(--footer);
   font-size: 0.76rem;
 }
 

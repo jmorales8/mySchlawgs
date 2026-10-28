@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../api";
 import styles from "./community.module.css";
@@ -16,6 +16,29 @@ export default function RandomPost({ postId, ready, initialCategory = "popular" 
   const [category, setCategory] = useState<string>(initialCategory);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const discoveryRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function dismiss(event: PointerEvent) {
+      if (event.target instanceof Node && !discoveryRef.current?.contains(event.target)) setOpen(false);
+    }
+    function escape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", dismiss);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
 
   async function discover() {
     setBusy(true); setError("");
@@ -27,7 +50,11 @@ export default function RandomPost({ postId, ready, initialCategory = "popular" 
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }
 
-  return <section className={styles.discovery} aria-label="Discover a random post">
+  return <section ref={discoveryRef} className={styles.discovery} aria-label="Discover a random post">
+    <button ref={triggerRef} type="button" className={styles.discoveryTrigger} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
+      Feeling bored? <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+    </button>
+    <div id={panelId} className={styles.discoveryPanel} data-open={open}>
     <h2>Feeling bored?</h2>
     <fieldset disabled={busy || !ready}>
       <legend className={styles.srOnly}>What are you in the mood for?</legend>
@@ -38,5 +65,6 @@ export default function RandomPost({ postId, ready, initialCategory = "popular" 
     </fieldset>
     <button type="button" disabled={busy || !ready} onClick={() => void discover()}>{busy ? "Finding a schlawg…" : "Surprise me ↗"}</button>
     {error && <p className={styles.discoveryError} role="status">{error}</p>}
+    </div>
   </section>;
 }

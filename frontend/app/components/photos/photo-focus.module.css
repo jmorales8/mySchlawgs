@@ -1,4 +1,4 @@
-.dialog { width: min(1200px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; margin: auto; border: 1px solid #ffffff30; border-radius: 14px; background: #192017; color: #fffdf8; overflow: hidden; box-shadow: 0 24px 90px #0008; }
+.dialog { width: min(1200px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; margin: auto; border: 1px solid #ffffff30; border-radius: 14px; background: #192017; color: var(--on-dark); overflow: hidden; box-shadow: 0 24px 90px #0008; }
 .dialog::backdrop { background: #0d120ee6; }
 .dialog[open], .dialog[open]::backdrop { animation: fadeIn 100ms ease-out both; }
 .dialog.closing { animation: fadeAway 100ms ease-out forwards; }
@@ -11,7 +11,7 @@
 .viewer { height: min(850px, calc(100dvh - 26px)); display: flex; flex-direction: column; }
 .header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; font-size: 13px; flex-shrink: 0; }
 .header span { overflow-wrap: anywhere; }
-.dialog button { border: 1px solid #ffffff55; background: #192017dc; color: #fffdf8; cursor: pointer; min-width: 44px; height: 44px; border-radius: 50%; font-size: 22px; flex-shrink: 0; }
+.dialog button { border: 1px solid #ffffff55; background: #192017dc; color: var(--on-dark); cursor: pointer; min-width: 44px; height: 44px; border-radius: 50%; font-size: 22px; flex-shrink: 0; }
 .dialog button:focus-visible { outline: 3px solid #eac8b7; outline-offset: 3px; }
 .stage { position: relative; min-height: 0; flex: 1; display: grid; place-items: center; background: #0d120e; }
 .stage img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
@@ -31,6 +31,6 @@
 .next::before { transform: rotate(45deg); }
 @media (prefers-reduced-motion: reduce) { .stage button { transition: none; } }
 .caption { padding: 12px 18px; max-height: 25dvh; overflow-y: auto; flex-shrink: 0; font-size: 14px; }
-.caption span { font-size: 11px; color: #c6cbbd; }
+.caption span { font-size: 11px; color: var(--control-border); }
 .caption p { margin: 8px 0 0; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .dialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); } .viewer { height: calc(100dvh - 14px); } .header { padding: 8px 12px; } .caption { padding: 10px 12px; } }
