@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { cropBounds } from "./profile-crop";
 import styles from "./profile-cropper.module.css";
+import ErrorToast from "../shared/error-toast";
 
 type Props = { file: File; onCancel: () => void; onSave: (file: File) => Promise<void> };
 type Position = { x: number; y: number; zoom: number };
@@ -106,7 +107,7 @@ export default function ProfileCropper({ file, onCancel, onSave }: Props) {
     </div>
     <label className={styles.zoom}>Zoom <output>{position.zoom.toFixed(1)}×</output><input type="range" min="1" max="4" step="0.01" value={position.zoom} disabled={!image || saving} onChange={event => move(position.x, position.y, Number(event.target.value))} /></label>
     <div className={styles.preview}><canvas ref={preview} width={160} height={160} aria-label="Circular profile picture preview" /><span>This is how your profile picture will appear.<small>Saved as a still image.</small></span></div>
-    {error && <p className={styles.error} role="alert">{error}</p>}
+    {error && <ErrorToast key={error} message={error} />}
     <div className={styles.actions}><button type="button" disabled={saving} onClick={onCancel}>Cancel</button><button type="button" disabled={!image || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save profile picture"}</button></div>
   </dialog>;
 }

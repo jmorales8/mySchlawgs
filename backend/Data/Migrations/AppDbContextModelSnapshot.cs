@@ -633,6 +633,21 @@ namespace backend.Data.Migrations
                     b.ToTable("photos", (string)null);
                 });
 
+            modelBuilder.Entity("Backend.Models.PhotoAnimalProfile", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnimalProfileId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PhotoId", "AnimalProfileId");
+
+                    b.HasIndex("AnimalProfileId");
+
+                    b.ToTable("photo_animal_profiles", (string)null);
+                });
+
             modelBuilder.Entity("Backend.Models.Post", b =>
                 {
                     b.Property<Guid>("Id")
@@ -887,6 +902,23 @@ namespace backend.Data.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Backend.Models.PhotoAnimalProfile", b =>
+                {
+                    b.HasOne("Backend.Models.AnimalProfile", null)
+                        .WithMany()
+                        .HasForeignKey("AnimalProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.Photo", "Photo")
+                        .WithMany("AnimalProfiles")
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Photo");
+                });
+
             modelBuilder.Entity("Backend.Models.Post", b =>
                 {
                     b.HasOne("Backend.Models.AppUser", null)
@@ -973,6 +1005,11 @@ namespace backend.Data.Migrations
                         .HasForeignKey("ReporterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Models.Photo", b =>
+                {
+                    b.Navigation("AnimalProfiles");
                 });
 #pragma warning restore 612, 618
         }

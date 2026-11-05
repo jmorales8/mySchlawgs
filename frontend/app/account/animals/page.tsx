@@ -36,7 +36,7 @@ function Workspace() {
   const [photoSelection, setPhotoSelection] = useState<{ animal: Animal; file: File } | null>(null);
   useEffect(() => {
     let active = true;
-    api<Animal[]>("/api/account/animals").then(items => { if (active) { setAnimals(items); setLoaded(true); setLoadError(""); } })
+    api<Animal[]>("/api/account/animals").then(items => { if (active) { setAnimals(items); setLoaded(true); setLoadError(""); if (window.location.hash === "#new") { setOpen(true); requestAnimationFrame(() => document.getElementById("animal-name")?.focus()); } else if (window.location.hash.startsWith("#animal-")) { requestAnimationFrame(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "center" })); } } })
       .catch((e: Error) => { if (active) setLoadError(e.message); });
     return () => { active = false; };
   }, [attempt]);
@@ -95,7 +95,7 @@ function Workspace() {
         <div className={styles.actions}><button type="submit">{busy ? "Saving…" : editing ? "Save changes" : "Create profile"}</button><button type="button" className={styles.secondary} onClick={() => { setOpen(false); setError(""); }}>Cancel</button></div>
       </fieldset></form></section>}
     {loaded && animals.length === 0 && !open && <section className={styles.empty}><span aria-hidden="true">♡</span><h2>Your family starts here.</h2><p>Add your first schlawg, then make room for the whole crew.</p><button onClick={() => begin()}>Create your first profile</button></section>}
-    <div className={styles.grid}>{animals.map(animal => <article className={styles.card} key={animal.id}>
+    <div className={styles.grid}>{animals.map(animal => <article className={styles.card} key={animal.id} id={`animal-${animal.id}`}>
       {animal.profilePhotoUrl ? <img className={styles.animalAvatar} src={animal.profilePhotoUrl} alt={`${animal.name}'s profile`} /> : <div className={styles.monogram} aria-hidden="true">{animal.name[0]?.toUpperCase()}</div>}
       <label className={styles.photoButton}>{animal.profilePhotoUrl ? "Change profile picture" : "Add profile picture"}<input aria-label={`${animal.profilePhotoUrl ? "Change" : "Add"} profile picture for ${animal.name}`} disabled={busy} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={event => { choosePhoto(animal, event.target.files?.[0]); event.target.value = ""; }} /></label>
       <h2>{animal.name}</h2><p className={styles.eyebrow}>{animal.animalType}</p><dl><div><dt>Breed or mix</dt><dd>{animal.breed || "Not added yet"}</dd></div><div><dt>Age</dt><dd>{animal.age} {animal.age === 1 ? animal.ageUnit.slice(0, -1) : animal.ageUnit} old</dd></div></dl>{animal.funFact && <div className={styles.fact}><h3>Fun fact</h3><p>{animal.funFact}</p></div>}

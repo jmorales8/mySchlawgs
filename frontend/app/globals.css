@@ -18,6 +18,9 @@
   --photo-mat: #EBDDE0;
   --footer: #402D3E;
   --on-dark: #FAF0EA;
+  --reaction-surface: #FFFFFF;
+  --action-hover: #EAD7E1;
+  --action-hover-ink: #402D3E;
   --error-surface: #F7DED5;
   --error-ink: #8D321F;
   --success-surface: #E0E9D4;
@@ -43,6 +46,9 @@
   --photo-mat: #151217;
   --footer: #141116;
   --on-dark: #F2EAF1;
+  --reaction-surface: #332D38;
+  --action-hover: #504256;
+  --action-hover-ink: #F2EAF1;
   --error-surface: #45272C;
   --error-ink: #FFB7A8;
   --success-surface: #29392D;

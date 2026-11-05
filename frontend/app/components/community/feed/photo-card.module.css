@@ -1,0 +1,39 @@
+/* Component-specific styles. Composed classes retain the shared control styling. */
+.postSchlawgs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 50%; margin: 0 0 0 auto; padding: 0; list-style: none; }
+.postSchlawgs li { display: flex; flex: 0 0 auto; padding: 2.5px; border: 3px solid #1372c5; border-radius: 50%; background: var(--surface); }
+.postSchlawgs.postSchlawgs button { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 50%; background: var(--selected); color: var(--link); }
+.postSchlawgs button > img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; aspect-ratio: 1 / 1; border-radius: 50%; object-fit: cover; object-position: 50% 50%; }
+.postSchlawgs button > span { display: grid; place-items: center; width: 100%; height: 100%; line-height: 1; text-align: center; }
+.postSchlawgs.postSchlawgs button:hover { background: var(--soft); border-color: var(--accent); }
+.carousel { position: relative; background: var(--photo-mat); }
+.carouselTrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.carouselTrack::-webkit-scrollbar { display: none; }
+.carouselSlide { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+.openPhoto.openPhoto { display: block; padding: 0; border: 0; border-radius: 0; background: var(--photo-mat); cursor: zoom-in; }
+.carouselDots { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; justify-content: center; gap: 0; max-width: calc(100% - 16px); padding: 0 6px; border-radius: 20px; background: #19171dcc; }
+.carouselDots.carouselDots button { display: grid; place-items: center; width: 28px; height: 32px; padding: 0; border: 0; background: transparent; }
+.carouselDots span { width: 7px; height: 7px; border-radius: 50%; background: #ffffff80; }
+.carouselDots [aria-pressed=true] span { background: #fff; transform: scale(1.3); }
+.carouselDots.carouselDots button:focus-visible { outline: 2px solid #fff; outline-offset: -3px; border-radius: 50%; }
+.carouselArrow.carouselArrow { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; width: 15%; min-width: 44px; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; color: white; font-size: 0; box-shadow: none; opacity: .5; cursor: pointer; }
+.carouselArrow::before { content: ""; position: absolute; top: 50%; left: 50%; translate: -50% -50%; width: 14px; height: 14px; border-top: 5px solid currentColor; border-right: 5px solid currentColor; filter: drop-shadow(0 1px 2px #0008); }
+.carouselArrow.carouselArrow { transition: opacity 350ms ease; }
+.carouselArrow.carouselArrow:hover, .carouselArrow.carouselArrow:focus-visible { opacity: .9; }
+.carouselArrow.carouselArrow:active { opacity: 1; }
+.carouselArrow.carouselArrow:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.previous.previous { left: 0; }
+.next.next { right: 0; }
+.carouselArrow::after { content: ""; position: absolute; top: 0; bottom: 0; width: calc(100% + 32px); pointer-events: none; }
+.previous::after { left: 0; background: linear-gradient(to right, #0008, #0000); }
+.next::after { right: 0; background: linear-gradient(to left, #0008, #0000); }
+.carouselArrow::before { z-index: 1; }
+.previous::before { transform: rotate(-135deg); }
+.next::before { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) { .carouselArrow.carouselArrow { transition: none; } }
+.slideCount { position: absolute; top: 14px; right: 14px; background: #402d3ee6; color: white; padding: 6px 11px; border-radius: 20px; font-size: .8125rem; pointer-events: none; }
+.carousel:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
+.postReveal { animation: postFadeIn 350ms ease-out; }
+@keyframes postFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .postReveal { animation: none; }
+}

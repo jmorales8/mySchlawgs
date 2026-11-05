@@ -9,6 +9,7 @@ public sealed class Photo
     public int BatchPosition { get; set; }
     public Guid? OwnerId { get; set; }
     public AppUser? Owner { get; set; }
+    public List<PhotoAnimalProfile> AnimalProfiles { get; set; } = [];
     public string Description { get; set; } = "";
     public bool IsProfilePhoto { get; set; }
     public required string FileName { get; set; }

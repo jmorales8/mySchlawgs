@@ -1,0 +1,71 @@
+/* Component-specific styles. Composed classes retain the shared control styling. */
+.fileButton { composes: fileButton from "./community.module.css"; }
+.eyebrow { composes: eyebrow from "./community.module.css"; }
+.drafts { display: grid; gap: 16px; margin-top: 22px; }
+.draft { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.draft img { width: 110px; height: 120px; object-fit: cover; border-radius: 8px; }
+@media (max-width: 760px) { .draft { grid-template-columns: 75px minmax(0, 1fr); } .draft img { width: 75px; height: 95px; } }
+.composeActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.descriptionOptions { margin: 22px 0; padding: 16px; border: 1px solid var(--control-border); border-radius: 8px; }
+.descriptionOptions legend { font-size: .875rem; font-weight: 600; padding: 0 6px; }
+.descriptionOptions.descriptionOptions label { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+.descriptionOptions.descriptionOptions input { width: 16px; height: 16px; padding: 0; margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+.descriptionOptions p { margin-bottom: 0; }
+.sharedDescription { margin-top: 20px; }
+.composerDialog { width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--foreground); box-shadow: 0 24px 80px #0004; overflow-y: auto; }
+.composerDialog::backdrop { background: #402d3ecc; }
+.composerForm { padding: clamp(18px, 4vw, 28px); }
+.composerHeader { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.composerHeader .eyebrow { margin: 0; }
+.composerHeader.composerHeader button { padding: 8px 12px; background: transparent; color: var(--accent); border-color: var(--control-border); }
+.addMore.addMore { background: transparent; color: var(--accent); border-color: var(--control-border); }
+@keyframes composerFadeIn { from { opacity: 0; } to { opacity: 1; } }
+.composerDialog[open], .composerDialog[open]::backdrop { animation: composerFadeIn 180ms ease-out both; }
+@keyframes composerFadeOut { from { opacity: 1; } to { opacity: 0; } }
+.composerDialog[open][data-closing=true], .composerDialog[open][data-closing=true]::backdrop { animation: composerFadeOut 180ms ease-in both; }
+.uploadToastRegion { position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 50; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
+.uploadToast { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--soft); color: var(--link); box-shadow: 0 6px 24px #402d3e26; font-size: 14px; pointer-events: auto; animation: composerFadeIn 180ms ease-out both; }
+.uploadToast[data-success=true] { background: var(--success-surface); border-color: var(--control-border); color: var(--success-ink); }
+.uploadToast.uploadToast button { display: grid; place-items: center; min-width: 36px; min-height: 36px; padding: 8px; border: 0; background: transparent; color: inherit; }
+.uploadToast.uploadToast button:hover { background: #402d3e10; }
+.composerForm .fileButton, .composeActions > button { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+@media (hover: hover) {
+  .composerForm .fileButton:not(:has(input:disabled)):hover, .composeActions.composeActions > .addMore:not(:disabled):hover { background: var(--soft); color: var(--link); border-color: var(--control-border); }
+  .composeActions.composeActions > button:not(.addMore):not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+}
+.composerForm .fileButton:not(:has(input:disabled)):active, .composeActions.composeActions > .addMore:not(:disabled):active { background: var(--selected); color: var(--accent-active); border-color: var(--control-border); }
+.composeActions.composeActions > button:not(.addMore):not(:disabled):active { background: var(--accent-active); border-color: var(--accent-active); }
+@media (prefers-reduced-motion: reduce) {
+  .composerDialog[open], .composerDialog[open]::backdrop, .composerDialog[open][data-closing=true], .composerDialog[open][data-closing=true]::backdrop, .uploadToast { animation: none; }
+  .composerForm .fileButton, .composeActions > button { transition: none; }
+}
+
+.animalSelector { display: grid; gap: 8px; margin-top: 14px; color: var(--link); font-size: .875rem; font-weight: 600; }
+.animalTagRow { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.animalTag.animalTag, .animalPickerTrigger { position: relative; display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); color: var(--link); cursor: pointer; }
+.animalPickerTrigger.animalPickerTrigger { display: flex; gap: 7px; width: auto; min-height: 42px; padding: 0 12px; border-radius: 21px; font: 500 1.6rem/1 var(--font-geist-sans), Arial, sans-serif; }
+.animalPickerLabel { white-space: nowrap; font-size: .8125rem; font-weight: 600; }
+.animalTag img, .animalPickerMenu img, .animalTag > span { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.animalTag.animalTag > span, .animalInitial { display: grid; place-items: center; background: var(--selected); color: var(--link); font-size: 1rem; font-weight: 700; }
+.animalTag.animalTag svg { position: absolute; top: -3px; right: -4px; width: 16px; height: 16px; padding: 2px; border: 1px solid var(--surface); border-radius: 50%; background: var(--accent); color: var(--on-accent); stroke: currentColor; stroke-width: 1.7; }
+.animalTag.animalTag:hover { border-color: var(--accent); }
+.animalPicker.animalPicker { position: relative; flex: 0 0 auto; }
+.animalPickerTrigger[aria-expanded=true] { background: var(--selected); border-color: var(--accent); }
+.animalPickerMenu { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; display: grid; gap: 4px; width: min(272px, calc(100vw - 48px)); max-height: 280px; overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px rgb(40 22 36 / 18%); color: var(--foreground); transform-origin: top left; animation: animalPickerOpen 160ms cubic-bezier(.16, 1, .3, 1) both; }
+.animalPickerMenuClosing { pointer-events: none; animation: animalPickerClose 160ms ease-in both; }
+.animalPickerMenuHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 4px 4px 8px; }
+.animalPickerMenuHeader > p { margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 500; }
+.animalPickerMenuHeader.animalPickerMenuHeader > .animalPickerMenuClose { display: grid; place-items: center; flex: 0 0 32px; width: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.25rem; line-height: 1; }
+.animalPickerMenuHeader.animalPickerMenuHeader > .animalPickerMenuClose:hover { background: var(--selected); color: var(--link); }
+@keyframes animalPickerOpen { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes animalPickerClose { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-4px) scale(.98); } }
+.animalPickerMenu.animalPickerMenu > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--foreground); text-align: left; }
+.animalPickerMenu.animalPickerMenu > button:not(:disabled):hover { background: var(--selected); }
+.animalPickerMenu.animalPickerMenu > button:disabled { opacity: .72; }
+.animalPickerMenu img, .animalInitial { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; }
+.animalPickerMenu button > span:nth-child(2) { display: grid; gap: 1px; }
+.animalPickerMenu small { color: var(--muted); font-size: .75rem; font-weight: 400; }
+.animalPickerMenu .animalAdded { margin-left: auto; color: var(--link); font-size: .75rem; font-weight: 600; }
+.animalPickerMenu > a { padding: 8px; color: var(--link); font-size: .8125rem; text-underline-offset: 3px; }
+:is(.animalTag.animalTag, .animalPickerTrigger, .animalPickerMenu button, .animalPickerMenu a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .animalPickerMenu, .animalPickerMenuClosing { animation: none; } }

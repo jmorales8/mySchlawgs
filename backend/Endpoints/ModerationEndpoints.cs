@@ -23,6 +23,7 @@ public static class ModerationEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (post == null) return Results.NotFound(new { message = "This post is no longer available." });
+            if (post.OwnerId == userId) return Results.Json(new { message = "You cannot report your own post." }, statusCode: 403);
             if (await db.Reports.AnyAsync(r => r.PostId == id && r.ReporterId == userId, ct))
                 return Results.Conflict(new { message = "You have already reported this post." });
             db.Reports.Add(new PostReport { PostId = id, ReporterId = userId, Reason = input.Reason, Details = input.Details?.Trim() ?? "", CreatedAt = DateTimeOffset.UtcNow });
@@ -66,6 +67,7 @@ public static class ModerationEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (post == null) return Results.NotFound(new { message = "Post not found or already removed." });
+            if (post.OwnerId == userId) return Results.Json(new { message = "You cannot remove your own published post." }, statusCode: 403);
             post.RemovedAt = DateTimeOffset.UtcNow; post.RemovedById = userId; post.RemovalReason = input.Reason.Trim(); post.ModerationVersion++;
             await db.SaveChangesAsync(ct);
             await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"removed:{id}:{post.ModerationVersion}", "removed", "A moderator removed your post. View the reason and submit a dispute from your reports page.", ct);

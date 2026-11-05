@@ -1,0 +1,12 @@
+/* Component-specific styles. Composed classes retain the shared control styling. */
+.photo { display: block; width: 100%; max-height: 640px; object-fit: contain; background: var(--photo-mat); }
+.photoFrame .photo { height: clamp(280px, 55vw, 560px); }
+.photoFrame { position: relative; height: clamp(280px, 55vw, 560px); background: var(--photo-mat); overflow: hidden; }
+.imagePlaceholder { position: absolute; inset: 0; }
+.feedImage { opacity: 0; transition: opacity 350ms ease-out; }
+.imageReady { opacity: 1; }
+.imageError { position: absolute; inset: 0; display: grid; place-content: center; padding: 24px; color: var(--link); font-size: 14px; text-align: center; }
+@media (prefers-reduced-motion: reduce) {
+  .feedImage { transition: none; }
+}
+.photoFrame, .photoFrame .photo { height: clamp(240px, 85cqw, 560px); }

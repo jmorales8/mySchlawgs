@@ -2,8 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useState } from "react";
-import styles from "./community.module.css";
-import type { Photo } from "./types";
+import styles from "./feed-image.module.css";
+import sharedStyles from "../community.module.css";
+import type { Photo } from "../types";
 
 export default function FeedImage({ photo }: { photo: Photo }) {
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -11,7 +12,7 @@ export default function FeedImage({ photo }: { photo: Photo }) {
     if (image?.complete && image.naturalWidth > 0) setState("ready");
   }, []);
   return <div className={styles.photoFrame}>
-    {state === "loading" && <span className={`${styles.skeleton} ${styles.imagePlaceholder}`} aria-hidden="true" />}
+    {state === "loading" && <span className={`${sharedStyles.skeleton} ${styles.imagePlaceholder}`} aria-hidden="true" />}
     <img ref={imageRef}
       className={`${styles.photo} ${styles.feedImage} ${state === "ready" ? styles.imageReady : ""}`}
       loading="lazy" decoding="async" draggable={false} src={photo.downloadUrl}

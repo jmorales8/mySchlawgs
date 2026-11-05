@@ -1,0 +1,102 @@
+.social { --social-inset: 22px; padding: 0 var(--social-inset); border-top: 1px solid var(--border); }
+.social .plain { background: transparent; color: var(--link); border: 0; padding: 4px 0; font-size: .8125rem; text-decoration: underline; text-underline-offset: 3px; }
+.actions { --action-inset: 5px; display: flex; align-items: stretch; gap: 0; min-height: 45px; margin-inline: calc(-1 * var(--social-inset)); padding-inline-start: var(--action-inset); }
+.social > :last-child:not(.actions) { margin-bottom: 22px; }
+.actions > div:first-child { flex: 0 0 72px; }
+.actions > div:first-child > button { position: relative; width: 100%; }
+.actions > div:first-child > button:not(:disabled):is(:hover, :focus-visible)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: var(--action-inset);
+  background: var(--action-hover);
+  pointer-events: none;
+}
+.social .actions > button > svg { display: block; width: 22px; height: 22px; flex-shrink: 0; }
+.social .actions > button > span { display: block; line-height: 1; font-variant-numeric: tabular-nums; }
+.social .actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; width: auto; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-weight: 500; }
+.comments { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.social h3 { font: 600 1.125rem/1.4 var(--font-geist-sans), Arial, sans-serif; text-wrap: balance; margin: 0 0 14px; }
+.shareLink { margin-top: 16px; }
+.shareLink a, .message a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.shareLink a { display: inline-block; margin-top: 10px; }
+.message, .error { font-size: .875rem; line-height: 1.6; margin: 12px 0 0; }
+.error { color: var(--error-ink); }
+.comment { margin: 0; padding: 18px 0; border-top: 1px solid var(--border); }
+.comment strong { font-size: .875rem; }
+.comment .commentHeader time { display: inline; font-size: .8125rem; line-height: 1.5; color: var(--muted); margin-top: 0; }
+.comment p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.6; max-inline-size: 65ch; margin: 10px 0; }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .8125rem; }
+.comments form { margin-top: 18px; }
+.comments form > button { margin-top: 12px; }
+@media (max-width: 480px) { .social { --social-inset: 14px; } .social > :last-child:not(.actions) { margin-bottom: 18px; } .social .actions button { padding: 10px 8px; } }
+.quoteArea { padding: 0 22px; }
+.bestQuote { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; padding: 0; color: var(--foreground); }
+.quoteMarker { display: flex; align-items: center; flex-shrink: 0; color: var(--accent); }
+.bestQuote blockquote { flex: 1; min-width: 0; margin: 0; font: 1.0625rem/1.6 Georgia, serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bestQuote cite { font: normal .8125rem/1.6 var(--font-geist-sans), Arial, sans-serif; color: var(--muted); white-space: normal; display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.bestQuote .quoteReadMore { display: inline; padding: 4px; border: 0; background: transparent; color: var(--link); font: 500 .8125rem/1.6 var(--font-geist-sans), Arial, sans-serif; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.commentHeader { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.commentHeader > strong { overflow-wrap: anywhere; min-width: 0; }
+.slideBadge { display: inline-grid; place-items: center; flex-shrink: 0; min-width: 28px; height: 28px; padding: 0 5px; border-radius: 7px; background: var(--soft); color: var(--link); font-weight: 700; font-size: .8125rem; }
+.social .quoteAction { display: block; margin: 8px 0; padding: 6px 0; background: transparent; border: 0; color: var(--accent); font-size: .8125rem; cursor: pointer; }
+.social .quoteAction:disabled { opacity: .65; cursor: default; }
+.authorLike { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: var(--link); font-size: .8125rem; line-height: 1.5; }
+.authorAvatar { display: inline-grid; place-items: center; width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; object-fit: cover; background: var(--selected); color: var(--link); font-size: .8125rem; }
+.commentActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.social .commentActions > button { min-height: 36px; padding: 7px 11px; border-radius: 8px; font-size: .875rem; text-decoration: none; }
+.commentReactionControl { position: relative; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.commentReactionCounts { display: inline-flex; gap: 8px; align-items: center; font-size: .8125rem; color: var(--link); }
+.social .replyAction { color: var(--link); background: transparent; border: 0; }
+.social .replyAction[aria-expanded=true] { background: var(--selected); border-color: var(--control-border); }
+.commentManagement { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+.social .commentManagement .removeAction { color: #963b30; }
+.commentManagement .confirm button:first-of-type { background: #963b30; color: #fff; border-color: #963b30; }
+.reply { border-left: 1px solid var(--control-border); padding-left: 14px; }
+.replyContext { display: block; color: var(--muted); font-size: .8125rem; margin-bottom: 8px; }
+.replyTarget { background: var(--soft); }
+.comments .replyComposer { margin-top: 16px; }
+.composerActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; align-items: center; margin: 10px 0 0; }
+.moderation { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; font-size: .875rem; }
+.moderation > button { margin-right: 16px; }
+.moderation form { margin-top: 12px; }
+.moderation select { width: 100%; margin: 8px 0 16px; padding: 10px; border: 1px solid var(--control-border); border-radius: 7px; background: var(--surface); color: var(--foreground); }
+.moderation form > button { margin: 12px 12px 0 0; }
+
+.social .actions > button, .social .commentActions > button { transition: background-color 150ms ease, border-color 150ms ease; }
+.social .replyAction:not(:disabled):is(:hover, :focus-visible) { background: var(--selected); border-color: var(--control-border); }
+@media (prefers-reduced-motion: reduce) { .social .actions > button, .social .commentActions > button { transition: none; } }
+
+.social .actions > button:not(.reactionSummary):not(:disabled):is(:hover, :focus-visible) { color: var(--action-hover-ink); background: var(--action-hover); border-radius: 0; }
+.reactionSummary { display: flex; flex: 1; min-width: 0; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-left: auto; padding-inline: 6px; }
+.reactionTotal { display: inline-flex; align-items: center; gap: 4px; }
+.social .reactionSummary .reactionBadge { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 2px solid var(--surface); border-radius: 50%; font-size: 18px; line-height: 1; }
+.reactionBadge > span { margin-bottom: 4px; display: block; width: 100%; text-align: center; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+.reactionBadge[data-kind=like] { background: #2775d5; }
+.reactionBadge[data-kind=love] { background: #e95872; }
+.reactionBadge[data-kind=laugh] { background: #f0bf43; }
+
+@media (max-width: 480px) { .reactionSummary { gap: 5px; } .reactionTotal { gap: 2px; } }
+
+.comments > .commentComposer { margin: 0 0 28px; }
+.social .writingComposer label { font-size: .875rem; font-weight: 400; color: var(--muted); }
+.social .writingComposer textarea { min-height: 84px; max-height: 280px; margin-top: 8px; padding: 14px 16px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--soft); color: var(--foreground); font-weight: 400; line-height: 1.5; resize: vertical; overflow-y: auto; }
+.social .writingComposer textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -1px; }
+.social .writingComposer .composerActions > button { min-height: 40px; padding: 9px 14px; }
+.social .writingComposer .composerActions > .plain { order: -1; }
+.options { position: relative; margin-left: auto; flex-shrink: 0; font-family: var(--font-geist-sans), Arial, sans-serif; }
+.options > summary { display: grid; place-items: center; list-style: none; width: 36px; height: 36px; border-radius: 8px; color: var(--muted); cursor: pointer; }
+.options > summary::-webkit-details-marker { display: none; }
+.options > summary:is(:hover, :focus-visible), .options[open] > summary { background: var(--soft); color: var(--accent); }
+.options > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.optionsPanel { position: absolute; right: 0; top: calc(100% + 4px); z-index: 8; width: 240px; max-width: calc(100vw - 48px); padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px #402d3e20; }
+.options .optionsPanel > button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--link); text-align: left; font-size: .8125rem; line-height: 1.5; cursor: pointer; }
+.options .optionsPanel > button:not(:disabled):is(:hover, :focus-visible) { background: var(--soft); }
+.options .optionsPanel > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.options .optionsPanel > button:disabled { opacity: .55; cursor: default; }
+.comment .confirm { margin-top: 12px; }
+@media (max-width: 480px) { .quoteArea { padding-inline: 14px; } .bestQuote { gap: 8px; } }
+
+.comment .optionsPanel { top: auto; bottom: calc(100% + 4px); }

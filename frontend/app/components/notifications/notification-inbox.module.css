@@ -1,5 +1,13 @@
-.modal { width: min(680px, calc(100vw - 24px)); max-height: calc(100dvh - 40px); padding: 0; border: 1px solid var(--control-border); border-radius: 16px; background: var(--surface); color: var(--foreground); box-shadow: 0 24px 80px #0004; }
-.modal::backdrop { background: #402d3e99; }
+.modal { position: fixed; inset: 0; width: min(680px, calc(100vw - 24px)); max-height: calc(100dvh - 40px); margin: auto; padding: 0; overflow-y: auto; border: 1px solid var(--control-border); border-radius: 16px; background: var(--surface); color: var(--foreground); box-shadow: 0 24px 80px #0004; }
+.modal[open] { animation: notificationFadeIn 180ms ease-out both; }
+.modal::backdrop { background: transparent; }
+.modal[open]::backdrop { animation: notificationBackdropIn 180ms ease-out both; }
+.modal.closing { animation: notificationFadeOut 180ms ease-in both; }
+.modal.closing::backdrop { animation: notificationBackdropOut 180ms ease-in both; }
+@keyframes notificationFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notificationFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(4px); } }
+@keyframes notificationBackdropIn { from { background: transparent; } to { background: #402d3e99; } }
+@keyframes notificationBackdropOut { from { background: #402d3e99; } to { background: transparent; } }
 .panel { padding: 0 22px 24px; }
 .header { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; padding: 16px 0; background: var(--surface); border-bottom: 1px solid var(--border); }
 .header button, .inbox button { cursor: pointer; border: 1px solid var(--control-border); border-radius: 7px; padding: 9px 12px; background: var(--accent); color: var(--on-accent); font: inherit; font-size: 13px; }
@@ -15,8 +23,12 @@
 .unread { background: var(--surface); border-left: 4px solid var(--accent); }
 .read { background: var(--soft); }
 .error { padding: 12px; background: var(--error-surface); color: var(--error-ink); }
-button.menuButton { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 14px 0 0; background: transparent; color: var(--accent); border-color: var(--control-border); }
+button.menuButton { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 14px 0 0; background: #73465F; color: #FFFFFF; border-color: #73465F; transition: background-color 150ms ease, border-color 150ms ease; }
+@media (hover: hover) { button.menuButton:hover { background: #623B51; border-color: #623B51; } }
+button.menuButton:active { background: #513043; border-color: #513043; }
+button.menuButton .badge { background: #FFFFFF; color: #73465F; }
+@media (prefers-reduced-motion: reduce) { button.menuButton { transition: none; } }
 .badge { border-radius: 20px; background: var(--accent); color: var(--on-accent); padding: 3px 7px; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .modal :is(button, a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .modal[open], .modal[open]::backdrop, .modal.closing, .modal.closing::backdrop { animation: none; } .card { transition: none; } }

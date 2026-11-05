@@ -1,0 +1,137 @@
+/* Component-specific styles. Composed classes retain the shared control styling. */
+.textButton { composes: textButton from "./community.module.css"; }
+.nav { composes: nav from "./community.module.css"; }
+.fileButton { composes: fileButton from "./community.module.css"; }
+.eyebrow { composes: eyebrow from "./community.module.css"; }
+.avatar { composes: avatar from "./community.module.css"; }
+.nav .brand { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: -.6px; }
+.brand > span:not(.brandText) { display: grid; place-items: center; border-radius: 45%; width: 34px; height: 34px; background: var(--accent); color: var(--background); font: 24px Georgia, serif; transform: rotate(-7deg); }
+.brandText { position: relative; display: inline-block; white-space: nowrap; }
+@keyframes brandTyping { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .brand:hover .brandText { animation: brandTyping 650ms steps(9, end) both; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .brand:focus-visible .brandText { animation: brandTyping 650ms steps(9, end) both; }
+}
+.layout { max-width: 1180px; margin: 0 auto 80px; display: grid; grid-template-columns: 360px minmax(0, 1fr); align-items: start; gap: 30px; }
+.sidebar { position: sticky; top: 24px; }
+.brandGroup { display: flex; flex-shrink: 0; min-height: 54px; align-items: center; gap: 12px; }
+.memberLayout { grid-template-columns: minmax(0, 840px); justify-content: center; }
+.content { min-width: 0; }
+.profile { display: flex; flex-direction: column; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 27px; margin-bottom: 24px;}
+.form { display: grid; gap: 18px; margin-top: 24px; }
+.profile .form { width: 100%; min-width: 0; }
+.profile .form > * { min-width: 0; }
+.form + .textButton { margin-top: 8px; }
+.sidebar .avatar { width: 76px; height: 76px; font-size: 34px; margin-bottom: 20px; }
+.sidebar .fileButton { display: block; text-align: center; margin-top: 20px; }
+.feedHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 20px 0 16px; }
+.feedHeading .eyebrow { margin-bottom: 8px; }
+.backToFeed { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 12px 17px; min-height: 44px; border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: var(--on-accent); text-decoration: none; font: 600 .875rem/1.45 var(--font-geist-sans), Arial, sans-serif; }
+.backToFeed:hover { background: var(--accent-hover); }
+.feedHeading.feedHeading h2 { margin: 0; font: 600 clamp(1.25rem, 2vw, 1.5rem)/1.3 var(--font-geist-sans), Arial, sans-serif; letter-spacing: -.02em; text-transform: none; text-wrap: balance; }
+.empty { padding: 60px 25px; text-align: center; border: 1px dashed var(--control-border); border-radius: 16px; color: var(--muted); }
+.empty span { font-size: 45px; display: block; margin-bottom: 14px; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; gap: 0; } .sidebar { position: static; } }
+.feedMenu.feedMenu .sharePostButton { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.accountMenu { position: relative; width: fit-content; margin: 0; z-index: 5; }
+.accountTrigger { position: relative; display: block; width: 54px; height: 54px; border-radius: 50%; cursor: pointer; list-style: none; transition: background-color 140ms ease; }
+.accountTrigger:hover, .accountTrigger:focus-visible { background: var(--soft); }
+.accountTrigger::-webkit-details-marker { display: none; }
+.accountTrigger .avatar { width: 54px; height: 54px; margin: 0; font-size: 25.2px; box-shadow: 0 0 0 2.7px var(--surface); }
+.accountTrigger:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
+@media (prefers-reduced-motion: reduce) { .accountTrigger { transition: none; } }
+.hamburger { position: absolute; right: -4.5px; bottom: -1.8px; width: 22.5px; height: 22.5px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2.7px; background: var(--accent); border: 1.8px solid var(--background); border-radius: 50%; }
+.hamburger span { display: block; width: 9px; height: 1px; background: var(--on-accent); transition: transform 180ms ease, opacity 140ms ease; }
+.accountTrigger[aria-expanded=true] .hamburger span:first-child { transform: translateY(3.7px) rotate(45deg); }
+.accountTrigger[aria-expanded=true] .hamburger span:nth-child(2) { opacity: 0; }
+.accountTrigger[aria-expanded=true] .hamburger span:last-child { transform: translateY(-3.7px) rotate(-45deg); }
+.accountDropdown { position: absolute; top: calc(100% + 6px); left: 0; display: flex; flex-direction: column; width: 270px; max-width: calc(100vw - 32px); padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px #402d3e26; transform-origin: top left; animation: accountDrawerOpen 240ms cubic-bezier(.16, 1, .3, 1) both; }
+.accountDropdownClosing { pointer-events: none; animation: accountDrawerClose 180ms cubic-bezier(.4, 0, 1, 1) both; }
+@keyframes accountDrawerOpen { from { opacity: 0; clip-path: inset(0 -40px 100% -40px); } to { opacity: 1; clip-path: inset(0 -40px -40px -40px); } }
+@keyframes accountDrawerClose { from { opacity: 1; clip-path: inset(0 -40px -40px -40px); } to { opacity: 0; clip-path: inset(0 -40px 100% -40px); } }
+.accountDropdown.accountDropdown > :is(a, button, label) { display: flex; align-items: center; width: 100%; min-height: 46px; margin: 0; padding: 13px 18px; border: 0; border-radius: 0; background: transparent; color: var(--accent); text-align: left; text-decoration: none; font: 600 .875rem/1.5 var(--font-geist-sans), Arial, sans-serif; cursor: pointer; }
+.accountDropdown.accountDropdown > :is(a, button, label):not(:disabled):not(:has(input:disabled)):hover { background: var(--soft); }
+.accountDropdown.accountDropdown > :is(a, button, label):last-child { border-radius: 0 0 11px 11px; }
+.accountDropdown.accountDropdown > :is(a, button):focus-visible, .accountDropdown.accountDropdown > label:focus-within { background: var(--soft); outline: 2px solid var(--accent); outline-offset: -3px; }
+.accountDropdown.accountDropdown input:focus-visible { outline: none; }
+@media (prefers-reduced-motion: reduce) { .accountDropdown, .accountDropdownClosing { animation: none; } .hamburger span { transition: none; } }
+.accountMenu { display: inline-block; vertical-align: top; }
+.feedMenu { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.feedMenu.feedMenu button { background: transparent; color: var(--link); border-color: var(--control-border); border-radius: 20px; padding: 10px 15px; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+.feedMenu.feedMenu button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+@media (hover: hover) {
+  .feedMenu.feedMenu button:not(:disabled):not([aria-pressed=true]):not(.sharePostButton):hover { background: var(--soft); color: var(--link); border-color: var(--control-border); }
+  .feedMenu.feedMenu button[aria-pressed=true]:not(:disabled):hover, .feedMenu.feedMenu .sharePostButton:not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+}
+.feedMenu.feedMenu button:not(:disabled):not([aria-pressed=true]):not(.sharePostButton):active { background: var(--selected); color: var(--accent-active); border-color: var(--control-border); }
+.feedMenu.feedMenu button[aria-pressed=true]:not(:disabled):active, .feedMenu.feedMenu .sharePostButton:not(:disabled):active { background: var(--accent-active); border-color: var(--accent-active); }
+@media (prefers-reduced-motion: reduce) { .feedMenu.feedMenu button { transition: none; } }
+.layout { width: calc(100% - 2 * var(--page-gutter)); max-width: 1600px; margin-left: auto; margin-right: auto; }
+.memberLayout { grid-template-columns: minmax(0, 1fr); }
+.content { container-type: inline-size; container-name: feed-content; }
+.layout { margin-top: 28px; }
+.singlePost { width: 100%; max-width: 840px; justify-self: center; }
+@media (min-width: 1600px) {
+  .layout { gap: 36px; }
+}
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 340px minmax(0, 1fr); gap: 20px; }
+  .memberLayout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; margin-bottom: 40px; }
+  .feedHeading { flex-wrap: wrap; }
+  .profile { padding: 20px; }
+}
+@media (max-width: 480px) {
+  .feedMenu.feedMenu button { padding: 10px 12px; }
+  .feedMenu { gap: 6px; }
+}
+.feedFrame { display: grid; grid-template-columns: 260px minmax(0, 780px); align-items: start; gap: clamp(28px, 4vw, 64px); width: calc(100% - 2 * var(--page-gutter)); max-width: 1140px; margin: 24px auto 64px; }
+.feedFrame > .nav { position: sticky; top: 24px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 28px; width: 100%; min-width: 0; margin: 0; padding: 0 20px 24px 0; border-bottom: 0; border-right: 1px solid var(--border); }
+.feedFrame > .layout { display: flex; flex-direction: column; gap: 28px; width: 100%; min-width: 0; margin: 0; }
+.feedFrame .content { width: 100%; }
+.feedFrame .feedHeading { margin-top: 0; }
+.feedFrame .sidebar { position: static; width: 100%; }
+.nav .brandGroup { flex-wrap: wrap; gap: 16px; }
+.nav .brand { font-size: 25px; }
+.nav .feedMenu { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.nav.nav .feedMenu button { width: 100%; min-height: 44px; padding: 12px 14px; border-color: transparent; border-radius: 10px; text-align: left; }
+.nav.nav .feedMenu button[aria-pressed=true] { background: var(--selected); border-color: transparent; color: var(--link); }
+@media (hover: hover) {
+  .nav.nav .feedMenu button[aria-pressed=true]:not(:disabled):hover { background: #73465f; color: #fff; }
+}
+.nav.nav .feedMenu .sharePostButton { margin-top: 12px; background: var(--accent); color: var(--on-accent); }
+.sideLinks { display: flex; flex-wrap: wrap; gap: 12px 16px; padding-top: 20px; border-top: 1px solid var(--border); }
+.sideLinks a, .sideLinks button { color: var(--muted); font-size: .8125rem; text-decoration: none; }
+.sideLinks a:hover { text-decoration: underline; }
+.profileSummary { display: none; }
+@media (min-width: 761px) {
+  .nav .brandGroup { display: flex; flex-direction: column; align-items: stretch; }
+  .nav .accountMenu { width: 100%; }
+  .nav .accountTrigger { display: flex; align-items: center; gap: 14px; width: 100%; height: auto; min-height: 54px; border-radius: 10px; }
+  .nav .accountTrigger .avatar { flex-shrink: 0; }
+  .nav .hamburger { left: 35px; right: auto; }
+  .profileSummary { display: block; min-width: 0; overflow-wrap: anywhere; font-size: .875rem; font-weight: 600; }
+  .profileSummary small { display: block; color: var(--muted); font-size: .75rem; font-weight: 400; margin-top: 4px; }
+  .nav .accountDropdown { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 100%; max-width: none; margin: 0; box-shadow: 0 12px 32px #402d3e26; }
+}
+@media (max-width: 760px) { .nav .brandGroup { flex-wrap: wrap; }
+  .feedFrame { grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 16px; margin-bottom: 40px; }
+  .feedFrame > .nav { position: static; padding: 0 0 20px; gap: 16px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .nav .brandGroup { flex-wrap: wrap; }
+  .nav .feedMenu { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .nav.nav .feedMenu button { width: auto; padding: 10px 12px; }
+  .nav.nav .feedMenu .sharePostButton { margin-top: 0; }
+  .nav .sideLinks { display: flex; padding-top: 12px; } }
+.feedFrame > .nav > * { flex-shrink: 0; min-width: 0; }
+.nav .accountMenu { width: 100%; }
+.nav .accountDropdown { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 100%; max-width: none; margin: 0; box-shadow: 0 12px 32px #402d3e26; }
+.nav .accountTrigger { display: flex; align-items: center; gap: 14px; width: 100%; height: auto; min-height: 54px; border-radius: 10px; }
+.nav .accountTrigger .avatar { flex-shrink: 0; }
+.nav .hamburger { left: 35px; right: auto; }
+.nav .profileSummary { display: block; min-width: 0; overflow-wrap: anywhere; }
+
+.accountDropdown.accountDropdown > :is(a, button, label):first-child { border-radius: 11px 11px 0 0; }

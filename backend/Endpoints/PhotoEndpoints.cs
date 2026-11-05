@@ -4,6 +4,7 @@ using Backend.Models;
 using Backend.Security;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace Backend.Endpoints;
 
@@ -37,24 +38,12 @@ public static class PhotoEndpoints
         endpoints.MapPost("/api/profile/photo", UploadProfileAsync).RequireAuthorization().RequireRateLimiting("uploads").DisableAntiforgery();
         endpoints.MapPost("/api/account/animals/{id:guid}/photo", (Guid id, HttpContext context, AppDbContext db, CancellationToken ct) => SavePhotos(context, db, true, ct, id))
             .RequireAuthorization().RequireRateLimiting("uploads").DisableAntiforgery();
-        group.MapPatch("/{id:guid}", async (Guid id, DescriptionInput input, HttpContext context, AppDbContext db) =>
-        {
-            if (input.Description is null || input.Description.Length > 2000) return Results.BadRequest(new { message = "Descriptions must be at most 2,000 characters." });
-            var ownerId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var photo = await db.Photos.SingleOrDefaultAsync(x => x.Id == id && x.OwnerId == ownerId);
-            if (photo is null) return Results.NotFound();
-            photo.Description = input.Description.Trim();
-            await db.SaveChangesAsync();
-            return Results.NoContent();
-        }).RequireAuthorization();
         group.MapGet("/{id:guid}", DownloadPhotoAsync)
             .Produces(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
 
         return endpoints;
     }
-
-    public sealed record DescriptionInput(string? Description);
 
     private static Task<IResult> UploadPhotoAsync(HttpContext context, AppDbContext db, CancellationToken cancellationToken)
         => SavePhotos(context, db, false, cancellationToken);
@@ -71,14 +60,37 @@ public static class PhotoEndpoints
             return Results.BadRequest(new { message = profile ? "Choose one profile picture." : "Choose 1–10 images, up to 50 MB total." });
         var descriptions = form["descriptions"];
         if (!profile && descriptions.Count != files.Count) return Results.BadRequest(new { message = "Include a description field for each image (it may be empty)." });
+        var animalIds = form["animalIds"];
+        Guid[][] animalIdsByPhoto = [];
+        if (!profile)
+        {
+            if (animalIds.Count != 1) return Results.BadRequest(new { message = "Include animal profile choices for each image." });
+            try { animalIdsByPhoto = JsonSerializer.Deserialize<Guid[][]>(animalIds[0]!) ?? []; }
+            catch (JsonException) { return Results.BadRequest(new { message = "Choose valid schlawg profiles." }); }
+            if (animalIdsByPhoto.Length != files.Count || animalIdsByPhoto.Any(ids => ids is null))
+                return Results.BadRequest(new { message = "Include animal profile choices for each image." });
+        }
         var ownerId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await db.Users.FindAsync([ownerId], cancellationToken);
         if (user is null) return Results.Unauthorized();
         AnimalProfile? animal = null;
+        var animalsById = new Dictionary<Guid, AnimalProfile>();
         if (animalId != null)
         {
             animal = await db.AnimalProfiles.SingleOrDefaultAsync(x => x.Id == animalId && x.OwnerId == ownerId, cancellationToken);
             if (animal == null) return Results.NotFound();
+        }
+        else if (!profile)
+        {
+            foreach (var selectedId in animalIdsByPhoto.SelectMany(ids => ids).Distinct())
+            {
+                if (!animalsById.ContainsKey(selectedId))
+                {
+                    var selected = await db.AnimalProfiles.SingleOrDefaultAsync(x => x.Id == selectedId && x.OwnerId == ownerId, cancellationToken);
+                    if (selected is null) return Results.BadRequest(new { message = "Choose one of your own schlawg profiles." });
+                    animalsById.Add(selectedId, selected);
+                }
+            }
         }
         var photos = new List<Photo>();
         var batchId = Guid.NewGuid();
@@ -125,6 +137,7 @@ public static class PhotoEndpoints
             BatchPosition = index,
             OwnerId = ownerId,
             Description = description.Trim(),
+            AnimalProfiles = profile ? [] : animalIdsByPhoto[index].Distinct().Select(selectedId => new PhotoAnimalProfile { PhotoId = photoId, AnimalProfileId = selectedId }).ToList(),
             IsProfilePhoto = profile,
             FileName = $"{photoId:N}{extension}",
             ContentType = file.ContentType.ToLowerInvariant(),
@@ -141,7 +154,11 @@ public static class PhotoEndpoints
         else if (profile) user.ProfilePhotoId = photos[0].Id;
         await db.SaveChangesAsync(cancellationToken);
         if (animal != null) return Results.Ok(animal);
-        return profile ? Results.Ok(AccountEndpoints.UserResponse(user)) : Results.Created("/api/photos", photos.Select(PhotoResponse.FromPhoto));
+        return profile ? Results.Ok(AccountEndpoints.UserResponse(user)) : Results.Created("/api/photos", photos.Select(photo => PhotoResponse.FromPhoto(photo) with {
+            AnimalProfiles = photo.AnimalProfiles.Select(tag => animalsById[tag.AnimalProfileId])
+                .OrderBy(selected => selected.Name).ThenBy(selected => selected.Id)
+                .Select(selected => new AnimalProfileSummary(selected.Id, selected.Name, selected.AnimalType, selected.Breed, selected.ProfilePhotoUrl)).ToArray()
+        }));
     }
 
     private static async Task<IResult> ListPhotosAsync(string? feed, HttpContext context, AppDbContext db, CancellationToken cancellationToken)
@@ -164,7 +181,11 @@ public static class PhotoEndpoints
                 x.Id, x.FileName, x.ContentType, x.Size, x.UploadedAt, $"/api/photos/{x.Id}", x.Description, x.OwnerId,
                 x.Owner == null ? null : x.Owner.Username,
                 x.Owner == null || x.Owner.ProfilePhotoId == null ? null : $"/api/photos/{x.Owner.ProfilePhotoId}", x.BatchId, x.BatchPosition, x.PostId,
-                db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null)))
+                db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null), x.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
+                db.AnimalProfiles.Where(animal => x.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
+                    .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
+                    .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
+                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}")).ToArray()))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(photos);

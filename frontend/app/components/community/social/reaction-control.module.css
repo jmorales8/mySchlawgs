@@ -1,0 +1,43 @@
+.control { position: relative; display: flex; min-width: 0; border: 0; background: transparent; color: var(--muted); }
+.control > button.primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; min-width: 0; border: 0; border-radius: 0; padding: 10px 2px; background: transparent; color: inherit; font: 600 .875rem/1.45 var(--font-geist-sans), Arial, sans-serif; cursor: pointer; }
+.control > button.primary { flex: 0 1 auto; }
+.control { align-items: stretch; min-height: 44px; }
+.control > button.primary { min-width: 44px; padding: 0; line-height: 1; }
+.control > button.primary > svg, .control > button.primary > span { display: block; flex-shrink: 0; }
+.control > button.primary > svg { width: 22px; height: 22px; }
+.control > button.primary > span { line-height: 1; font-variant-numeric: tabular-nums; }
+.control > button.primary[data-selected=true] { color: var(--accent); }
+.control > button:not(:disabled):is(:hover, :focus-visible) { color: var(--action-hover-ink); background: var(--action-hover); }
+.control > button:disabled { opacity: .5; cursor: not-allowed; }
+.control > button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.popup { position: fixed; z-index: 100; width: min(158px, calc(100vw - 24px)); padding-bottom: 10px; transform: translateY(calc(-100% + 10px)); }
+.popup[data-below=true] { transform: translateY(10px); padding-bottom: 0; padding-top: 10px; }
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 6px; border: 0; border-radius: 999px; background: var(--reaction-surface); color: var(--foreground); box-shadow: 0 8px 24px #0002, 0 2px 6px #0001; animation: reactionAppear 160ms cubic-bezier(.2, .8, .2, 1) both; }
+.choices button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 44px; border: 0; padding: 4px; background: transparent; color: inherit; font: 600 .75rem/1.4 var(--font-geist-sans), Arial, sans-serif; cursor: pointer; transform: scale(1); transition: transform 180ms cubic-bezier(.2, .8, .2, 1); }
+.choices button > span:first-child { font-size: 28px; line-height: 1.2; }
+.choices button:not(:disabled):is(:hover, :focus-visible) { transform: translateY(-3px) scale(1.18); z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .choices button { transition: none; } .choices button:not(:disabled):is(:hover, :focus-visible) { transform: none; } }
+.choices button:focus-visible { outline: none; }
+@keyframes reactionAppear { from { opacity: 0; transform: translateY(4px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .choices { animation: none; } }
+
+.choices button { isolation: isolate; }
+.choices button > span { position: relative; z-index: 1; }
+.choices button[data-reaction=like] { --glow: 59 130 246; }
+.choices button[data-reaction=love] { --glow: 244 63 94; }
+.choices button[data-reaction=laugh] { --glow: 250 195 35; }
+.choices button::before {
+  content: ""; position: absolute; inset: 5px; z-index: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(ellipse, rgb(var(--glow) / .12) 15%, rgb(var(--glow) / .75) 45%, rgb(var(--glow) / 0) 75%);
+  filter: blur(5px); opacity: 0; transform: scale(.65);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.choices button:not(:disabled):is(:hover, :focus-visible)::before { opacity: .9; animation: eclipseGlow 1400ms ease-in-out infinite alternate; }
+@keyframes eclipseGlow { from { transform: scale(.9); filter: blur(5px); } to { transform: scale(1.12); filter: blur(7px); } }
+@media (prefers-reduced-motion: reduce) {
+  .choices button::before { transition: none; }
+  .choices button:not(:disabled):is(:hover, :focus-visible)::before { animation: none; transform: scale(1); }
+}
+
+.control > button.primary > span.selectedEmoji { display: inline-grid; place-items: center; width: 26px; height: 26px; font-size: 20px; line-height: 1; }
+.selectedEmoji > span { margin-bottom: 4px; display: block; width: 100%; text-align: center; line-height: 1; font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }

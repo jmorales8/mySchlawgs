@@ -1,0 +1,10 @@
+.ending { padding: 40px 16px 16px; text-align: center; color: var(--foreground); }
+.animal { display: block; min-height: 56px; font-size: 40px; line-height: 1.4; }
+.label { margin: 16px 0 24px; color: var(--muted); font-size: .875rem; line-height: 1.6; }
+.joke { min-height: 96px; max-width: 52ch; margin: 0 auto; font-size: 1rem; line-height: 1.65; overflow-wrap: anywhere; }
+.joke p { margin: 0 0 8px; white-space: pre-wrap; }
+.punchline { font-weight: 600; }
+.loading { color: var(--muted); }
+.credit { display: block; width: fit-content; margin: 12px auto 0; font-size: .75rem; color: var(--muted); text-underline-offset: 3px; }
+.fallback { display: block; margin-top: 6px; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.back { display: inline-block; margin-top: 24px; padding: 10px; color: var(--link); font-size: .875rem; text-underline-offset: 4px; }

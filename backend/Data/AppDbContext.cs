@@ -8,6 +8,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AnimalProfile> AnimalProfiles => Set<AnimalProfile>();
     public DbSet<AnimalCatalogEntry> AnimalCatalog => Set<AnimalCatalogEntry>();
     public DbSet<Photo> Photos => Set<Photo>();
+    public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostReaction> Reactions => Set<PostReaction>();
@@ -112,6 +113,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         photo.HasQueryFilter(x => x.PostId == null || Posts.Any(p => p.Id == x.PostId));
         photo.HasOne<PostComment>().WithMany().HasForeignKey(x => x.BestQuoteCommentId).OnDelete(DeleteBehavior.SetNull);
         photo.HasOne<Post>().WithMany().HasForeignKey(x => x.PostId).OnDelete(DeleteBehavior.Cascade);
+        var photoAnimal = modelBuilder.Entity<PhotoAnimalProfile>();
+        photoAnimal.ToTable("photo_animal_profiles");
+        photoAnimal.HasKey(x => new { x.PhotoId, x.AnimalProfileId });
+        photoAnimal.HasQueryFilter(x => x.Photo.PostId == null || Posts.Any(p => p.Id == x.Photo.PostId));
+        photoAnimal.HasOne(x => x.Photo).WithMany(x => x.AnimalProfiles).HasForeignKey(x => x.PhotoId).OnDelete(DeleteBehavior.Cascade);
+        photoAnimal.HasOne<AnimalProfile>().WithMany().HasForeignKey(x => x.AnimalProfileId).OnDelete(DeleteBehavior.Cascade);
         photo.Property(x => x.Description).HasMaxLength(2000);
         photo.HasOne(x => x.Owner).WithMany().HasForeignKey(x => x.OwnerId).OnDelete(DeleteBehavior.Restrict);
         photo.Property(x => x.FileName).HasMaxLength(255).IsRequired();

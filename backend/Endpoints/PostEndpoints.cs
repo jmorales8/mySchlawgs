@@ -55,7 +55,11 @@ public static class PostEndpoints
                 .Select(p => new PhotoResponse(p.Id, p.FileName, p.ContentType, p.Size, p.UploadedAt, $"/api/photos/{p.Id}", p.Description, p.OwnerId,
                     p.Owner == null ? null : p.Owner.Username,
                     p.Owner == null || p.Owner.ProfilePhotoId == null ? null : $"/api/photos/{p.Owner.ProfilePhotoId}", p.BatchId, p.BatchPosition, p.PostId,
-                    db.Reports.Any(r => r.PostId == p.PostId && r.DismissedAt == null)))
+                    db.Reports.Any(r => r.PostId == p.PostId && r.DismissedAt == null), p.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
+                db.AnimalProfiles.Where(animal => p.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
+                    .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
+                    .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
+                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}")).ToArray()))
                 .ToListAsync(ct);
             return Results.Ok(photos);
         });
@@ -87,7 +91,7 @@ public static class PostEndpoints
             var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && p.BestQuoteCommentId != null)
                 .Select(p => new { photoId = p.Id, commentId = p.BestQuoteCommentId }).ToListAsync(ct);
             var reportedByMe = viewerId != null && await db.Reports.AnyAsync(r => r.PostId == id && r.ReporterId == viewerId, ct);
-            return Results.Ok(new { reactions, comments, bestQuotes, canChooseQuote = viewerId != null && post.OwnerId == viewerId, canModerate = admin, reportedByMe });
+            return Results.Ok(new { reactions, comments, bestQuotes, canChooseQuote = viewerId != null && post.OwnerId == viewerId, canModerate = admin && post.OwnerId != viewerId, reportedByMe });
         });
 
         group.MapPut("/{id:guid}/reaction", async (Guid id, ReactionInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {

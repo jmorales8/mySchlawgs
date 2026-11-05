@@ -81,10 +81,10 @@ try {
     if (await db.Photos.CountAsync(x => x.OwnerId == ownerId) != before) throw new Exception("Partial batch saved");
     Console.WriteLine("PASS invalid batch saves no photos"); passed++;
     await Check(await first.PostAsync("/api/photos", Upload(count: 11)), HttpStatusCode.BadRequest, "batch count limit");
-    await Check(await first.PatchAsJsonAsync($"/api/photos/{id}", new { description = new string('x', 2001) }), HttpStatusCode.BadRequest, "caption length limit");
-    await Check(await first.PatchAsJsonAsync($"/api/photos/{id}", new { description = "Updated story" }), HttpStatusCode.NoContent, "owner edits caption");
+    await Check(await first.PatchAsJsonAsync($"/api/photos/{id}", new { description = new string('x', 2001) }), HttpStatusCode.MethodNotAllowed, "published caption editing endpoint unavailable");
+    await Check(await first.PatchAsJsonAsync($"/api/photos/{id}", new { description = "Updated story" }), HttpStatusCode.MethodNotAllowed, "owner cannot edit published caption");
     await Check(await second.PostAsJsonAsync("/api/auth/register", new { username = names[1], password }), HttpStatusCode.OK, "second account");
-    await Check(await second.PatchAsJsonAsync($"/api/photos/{id}", new { description = "Not mine" }), HttpStatusCode.NotFound, "other users cannot edit caption");
+    await Check(await second.PatchAsJsonAsync($"/api/photos/{id}", new { description = "Not mine" }), HttpStatusCode.MethodNotAllowed, "other users cannot edit published caption");
     var profile = await Check(await first.PostAsync("/api/profile/photo", Upload(count: 1)), HttpStatusCode.OK, "profile picture upload");
     if (profile.GetProperty("profilePhotoUrl").ValueKind != JsonValueKind.String) throw new Exception("Profile URL missing");
     var profileId = Guid.Parse(profile.GetProperty("profilePhotoUrl").GetString()!.Split('/').Last());
@@ -100,8 +100,8 @@ try {
     var feed = await Check(await first.GetAsync("/api/photos"), HttpStatusCode.OK, "public photo feed");
     var mine = feed.EnumerateArray().Where(p => p.GetProperty("ownerId").ValueKind == JsonValueKind.String && p.GetProperty("ownerId").GetGuid() == ownerId).ToArray();
     if (mine.Length != 2 || mine.Any(p => p.GetProperty("profilePhotoUrl").GetString() != profile.GetProperty("profilePhotoUrl").GetString())) throw new Exception("Profile feed association broken");
-    if (mine.Any(p => p.GetProperty("batchId").GetGuid() != batchId) || mine.Single(p => p.GetProperty("batchPosition").GetInt32() == 0).GetProperty("description").GetString() != "Updated story" || mine.Single(p => p.GetProperty("batchPosition").GetInt32() == 1).GetProperty("description").GetString() != "Story 1") throw new Exception("Feed lost batch or caption association");
-    Console.WriteLine("PASS feed preserves batch and individual captions after editing"); passed++;
+    if (mine.Any(p => p.GetProperty("batchId").GetGuid() != batchId) || mine.Single(p => p.GetProperty("batchPosition").GetInt32() == 0).GetProperty("description").GetString() != "Story 0" || mine.Single(p => p.GetProperty("batchPosition").GetInt32() == 1).GetProperty("description").GetString() != "Story 1") throw new Exception("Feed lost batch or caption association");
+    Console.WriteLine("PASS feed preserves batch and individual captions after rejected editing"); passed++;
 
     var postId = uploaded[0].GetProperty("postId").GetGuid();
     if (uploaded[1].GetProperty("postId").GetGuid() != postId) throw new Exception("Carousel split across posts");
@@ -287,6 +287,8 @@ try {
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
     await Check(await anonymous.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.Unauthorized, "report requires sign-in");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "invalid" }), HttpStatusCode.BadRequest, "report category validated");
+    await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.Forbidden, "owner cannot report own post");
+    if (await db.Reports.AnyAsync(r => r.PostId == postId && r.ReporterId == ownerId)) throw new Exception("Self-report was saved");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam", details = "Test report" }), HttpStatusCode.OK, "account can report");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.Conflict, "duplicate report does not count");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "first report hides public post link");
@@ -310,7 +312,12 @@ try {
     await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test" }), HttpStatusCode.Forbidden, "ordinary owner cannot force moderation removal");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, true));
     await Check(await third.GetAsync("/api/moderation/reports"), HttpStatusCode.OK, "moderator queue accessible immediately");
-    await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test moderation removal" }), HttpStatusCode.NoContent, "moderator forcefully removes post");
+    await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test own removal" }), HttpStatusCode.Forbidden, "moderator cannot remove own post");
+    var ownActivity = await Check(await third.GetAsync($"/api/posts/{otherPost}/activity"), HttpStatusCode.OK, "own post remains available");
+    if (ownActivity.GetProperty("canModerate").GetBoolean()) throw new Exception("Own post exposed removal controls");
+    await db.Users.Where(u => u.Id == ownerId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, true));
+    await Check(await first.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test moderation removal" }), HttpStatusCode.NoContent, "moderator can remove another author's post");
+    await db.Users.Where(u => u.Id == ownerId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, false));
     await Check(await anonymous.GetAsync($"/api/posts/{otherPost}"), HttpStatusCode.NotFound, "moderator removal blocks public post");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, false));
     await Check(await third.GetAsync("/api/moderation/reports"), HttpStatusCode.Forbidden, "moderator revocation immediate");

@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "../api";
-import styles from "./community.module.css";
+import { api } from "../../api";
+import styles from "./random-post.module.css";
+import sharedStyles from "../community.module.css";
 
 const choices = [
   { value: "popular", title: "Popular", description: "5+ reactions and comments combined" },
@@ -57,10 +58,10 @@ export default function RandomPost({ postId, ready, initialCategory = "popular" 
     <div id={panelId} className={styles.discoveryPanel} data-open={open}>
     <h2>Feeling bored?</h2>
     <fieldset disabled={busy || !ready}>
-      <legend className={styles.srOnly}>What are you in the mood for?</legend>
+      <legend className={sharedStyles.srOnly}>What are you in the mood for?</legend>
       {choices.map(choice => <label key={choice.value} className={styles.discoveryChoice} title={choice.description}>
         <input type="radio" name={`discovery-${postId ?? "feed"}`} value={choice.value} checked={category === choice.value} onChange={() => { setCategory(choice.value); setError(""); }} />
-        <span><strong>{choice.title}</strong><small className={styles.srOnly}>{choice.description}</small></span>
+        <span><strong>{choice.title}</strong><small className={sharedStyles.srOnly}>{choice.description}</small></span>
       </label>)}
     </fieldset>
     <button type="button" disabled={busy || !ready} onClick={() => void discover()}>{busy ? "Finding a schlawg…" : "Surprise me ↗"}</button>

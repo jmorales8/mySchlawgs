@@ -1,0 +1,47 @@
+/* Component-specific styles. Composed classes retain the shared control styling. */
+.discovery { position: relative; flex: 0 0 auto; width: 640px; max-width: 100%; min-width: 0; margin-left: auto; z-index: 6; }
+.discoveryPanel { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.discoveryPanel > button { flex: 0 0 160px; width: 160px; }
+.discoveryTrigger.discoveryTrigger { display: none; }
+.discoveryTrigger:focus-visible, .discoveryPanel button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.discovery.discovery h2 { margin: 0; font-size: 22px; letter-spacing: -.4px; }
+.discovery fieldset { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; border: 0; padding: 0; margin: 0; }
+.discoveryChoice.discoveryChoice { display: flex; align-items: center; gap: 7px; padding: 10px; margin: 0; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.discoveryChoice:has(input:checked) { background: var(--soft); border-color: var(--control-border); }
+.discoveryTrigger.discoveryTrigger, .discoveryPanel > button, .discoveryChoice.discoveryChoice { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+@media (hover: hover) {
+  .discoveryTrigger.discoveryTrigger:not(:disabled):hover, .discoveryPanel > button:not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .discoveryChoice.discoveryChoice:not(:has(input:disabled)):hover { background: var(--soft); border-color: var(--control-border); color: var(--link); }
+  .discoveryChoice.discoveryChoice:has(input:checked):not(:has(input:disabled)):hover { background: var(--selected); border-color: var(--control-border); }
+}
+.discoveryTrigger.discoveryTrigger:not(:disabled):active, .discoveryPanel > button:not(:disabled):active { background: var(--accent-active); border-color: var(--accent-active); }
+.discoveryChoice.discoveryChoice:not(:has(input:disabled)):active { background: var(--selected); border-color: var(--control-border); color: var(--link); }
+.discoveryChoice.discoveryChoice:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .discoveryTrigger.discoveryTrigger, .discoveryPanel > button, .discoveryChoice.discoveryChoice { transition: none; }
+}
+.discoveryChoice.discoveryChoice input { width: 16px; height: 16px; margin: 0; flex-shrink: 0; accent-color: var(--accent); }
+.discoveryError { flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; text-align: right; font-size: .875rem; line-height: 1.6; color: var(--error-ink); margin: 0; }
+@media (max-width: 1050px) {
+  .discovery { width: auto; }
+  .discoveryTrigger.discoveryTrigger { display: flex; align-items: center; gap: 8px; min-height: 44px; white-space: nowrap; }
+  .discoveryPanel { display: none; position: absolute; top: calc(100% + 6px); right: 0; width: 300px; max-width: calc(100vw - 32px); padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px #402d3e26; }
+  .discoveryPanel[data-open=true] { display: flex; flex-direction: column; align-items: stretch; }
+  .discoveryPanel.discoveryPanel h2 { font-size: 24px; }
+  .discoveryPanel fieldset { flex-direction: column; gap: 8px; }
+  .discoveryChoice.discoveryChoice { min-height: 44px; }
+  .discoveryPanel > button { flex: none; width: 100%; min-height: 44px; }
+  .discoveryError { flex-basis: auto; text-align: left; }
+}
+.discovery.discovery { width: 100%; margin: 0; z-index: auto; }
+.discovery.discovery .discoveryTrigger { display: none; }
+.discovery .discoveryPanel, .discovery .discoveryPanel[data-open=true] { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+.discovery.discovery .discoveryPanel h2 { font: 600 1rem/1.5 var(--font-geist-sans), Arial, sans-serif; letter-spacing: 0; }
+.discovery .discoveryPanel fieldset { display: flex; flex-direction: column; gap: 6px; }
+.discovery .discoveryPanel > button { flex: none; width: 100%; }
+.discovery .discoveryError { text-align: left; }
+@media (max-width: 760px) {
+  .discovery.discovery .discoveryTrigger { display: flex; width: 100%; justify-content: space-between; }
+  .discovery .discoveryPanel { display: none; }
+  .discovery .discoveryPanel[data-open=true] { display: flex; padding-top: 16px; border-top: 0; }
+}
