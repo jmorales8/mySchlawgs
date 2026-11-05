@@ -16,7 +16,7 @@ const empty: Draft = { name: "", animalType: "Dog", breed: "", age: "", ageUnit:
 export default function AnimalProfilesPage() {
   const { user, ready, accountError } = useAccount();
   // Key the workspace to the account so drafts and profiles never carry between users.
-  return <main className={styles.page}><nav><Link href="/">← Community</Link><span>My schlawgs</span></nav>
+  return <main className={styles.page}><nav aria-label="Community navigation"><Link className={styles.communityLink} href="/"><span aria-label="Back to the community">{Array.from("↖  Back to the community").map((letter, index) => <span aria-hidden="true" className={styles.typedLetter} style={{ animationDelay: `${index * 30}ms` }} key={index}>{letter}</span>)}</span></Link></nav>
     {!ready ? <p role="status">Getting your account…</p> : accountError ? <p role="alert">{accountError}</p> : !user ? <section><h1>A little home for every schlawg.</h1><p>Log in to create profiles for all your animals.</p><Link href="/#account">Log in or create an account →</Link></section> : <Workspace key={user.id} />}
   </main>;
 }
@@ -81,7 +81,7 @@ function Workspace() {
 
   return <>
     {photoSelection && <ProfileCropper file={photoSelection.file} onCancel={() => setPhotoSelection(null)} onSave={savePhoto} />}
-    <header className={styles.header}><div><p className={styles.eyebrow}>YOUR ANIMAL FAMILY</p><h1>My schlawgs</h1><p>Big personalities deserve their own profiles. Introduce every animal in your family.</p></div><button disabled={!loaded || busy} onClick={() => begin()}>+ Add a schlawg</button></header>
+    <header className={styles.header}><div><h1>Da Schlawg Garden</h1><p>Big personalities deserve their own profiles. Introduce every animal in your family.</p></div><button disabled={!loaded || busy} onClick={() => begin()}>+ Add a schlawg</button></header>
     {notice && <p role="status" className={styles.notice}>{notice}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {loadError ? <p role="alert">{loadError} <button onClick={() => setAttempt(value => value + 1)}>Try again</button></p> : !loaded ? <p role="status">Loading your schlawgs…</p> : null}

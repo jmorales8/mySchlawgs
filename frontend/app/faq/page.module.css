@@ -1,0 +1,2 @@
+.groups { margin-top: 36px; }
+.groups :is(h2, h3) { text-align: left; }

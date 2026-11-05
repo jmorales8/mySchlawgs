@@ -175,6 +175,8 @@ public static class PhotoEndpoints
         if (feed != "mine")
             query = query.Where(x => !db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null));
         var photos = await query
+            // Load tag IDs and profile details separately to avoid multiplying rows per photo.
+            .AsSplitQuery()
             .OrderByDescending(x => x.UploadedAt)
             .ThenBy(x => x.PostId).ThenBy(x => x.BatchPosition).ThenBy(x => x.Id)
             .Select(x => new PhotoResponse(

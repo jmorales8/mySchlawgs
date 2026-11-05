@@ -51,6 +51,8 @@ public static class PostEndpoints
         group.MapGet("/{id:guid}", async (Guid id, AppDbContext db, CancellationToken ct) => {
             if (!await db.Posts.AnyAsync(p => p.Id == id, ct)) return Results.NotFound(new { message = "This post could not be found." });
             var photos = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto)
+                // This response projects both tag IDs and profile details.
+                .AsSplitQuery()
                 .OrderBy(p => p.BatchPosition).ThenBy(p => p.Id)
                 .Select(p => new PhotoResponse(p.Id, p.FileName, p.ContentType, p.Size, p.UploadedAt, $"/api/photos/{p.Id}", p.Description, p.OwnerId,
                     p.Owner == null ? null : p.Owner.Username,

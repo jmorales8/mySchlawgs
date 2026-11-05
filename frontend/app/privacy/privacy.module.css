@@ -1,0 +1,9 @@
+.overview strong { font-weight: 600; }
+.contents { padding: 6px 0; }
+.contents.contents h2 { font-family: inherit; font-size: 1rem; font-weight: 600; }
+.contents.contents ul { display: grid; gap: 2px; list-style: none; margin: 12px 0 0; padding: 0; }
+.contents.contents li + li { margin: 0; }
+.contents a { display: inline-flex; align-items: center; min-height: 44px; font-size: .875rem; text-decoration: none; }
+.contents a:hover { text-decoration: underline; }
+.contents a[aria-current="location"] { font-weight: 700; }
+@media (max-width: 600px) { .contents.contents h2 { font-size: .875rem; } .contents a { font-size: .8125rem; line-height: 1.5; } }
