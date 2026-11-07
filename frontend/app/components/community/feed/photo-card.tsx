@@ -12,8 +12,10 @@ import PhotoCaption from "./photo-caption";
 import PostSocial from "../social/post-social";
 import SchlawgProfileDialog, { type SchlawgProfile } from "../profiles/schlawg-profile-dialog";
 import type { Photo } from "../types";
+import { useAccount } from "../../../contexts/account-context";
 
 export default function PhotoCard({ photos, owner, onSaved, userId }: { photos: Photo[]; userId: string | null; owner: boolean; onSaved: () => Promise<void> }) {
+  const { user } = useAccount();
   const [selectedAnimal, setSelectedAnimal] = useState<SchlawgProfile | null>(null);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -41,7 +43,7 @@ export default function PhotoCard({ photos, owner, onSaved, userId }: { photos: 
   return <article className={`${sharedStyles.photoCard} ${styles.postReveal}`} aria-roledescription={photos.length > 1 ? "carousel" : undefined} aria-label={`Photos by ${photo.username ?? "the schlawgs"}`}>
     {selectedAnimal && <SchlawgProfileDialog animal={selectedAnimal} onClose={() => setSelectedAnimal(null)} />}
     {focusIndex !== null && <PhotoFocus photos={photos} initialIndex={focusIndex} onClose={next => { setFocusIndex(null); setActiveIndex(next); trackRef.current?.scrollTo({ left: next * trackRef.current.clientWidth, behavior: "instant" }); }} />}
-    <header><Avatar user={photo} className={sharedStyles.avatar} /><div><strong>{photo.username ? `@${photo.username}` : "From the original shclawginsteins"}</strong><time dateTime={photo.uploadedAt}>{new Date(photo.uploadedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div>{!!photo.animalProfiles?.length && <ul className={styles.postSchlawgs} aria-label="Schlawgs in this photo">{photo.animalProfiles.map(animal => <li key={animal.id}><button type="button" aria-label={`View ${animal.name}'s profile`} title={animal.name} aria-haspopup="dialog" onClick={() => setSelectedAnimal(animal)}>{animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}</button></li>)}</ul>}</header>
+    <header><Avatar user={photo} className={sharedStyles.avatar} /><div><strong>{photo.username ? `@${photo.username}` : "From the original shclawginsteins"}</strong><time dateTime={photo.uploadedAt}>{new Date(photo.uploadedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div>{!!photo.animalProfiles?.length && <ul className={styles.postSchlawgs} aria-label="Schlawgs in this photo">{photo.animalProfiles.map(animal => <li key={animal.id}><button type="button" aria-label={`View ${animal.name}'s profile${user?.votingForAnimalId === animal.id ? ", your vote for schlawg of the week" : ""}`} title={animal.name} aria-haspopup="dialog" onClick={() => setSelectedAnimal(animal)}>{animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}</button>{user?.votingForAnimalId === animal.id && <span className={styles.voteCheck} aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg></span>}</li>)}</ul>}</header>
     <div ref={setQuoteTarget} />
     {owner && photo.isUnderReview && <p className={sharedStyles.notice} role="status">This post was reported and is hidden from public feeds while awaiting moderator review. You can still see it here in My photos. <a href={`/account/reports?post=${photo.postId ?? photo.batchId ?? photo.id}`}>View reports or request a review</a>.</p>}
     <div className={styles.carousel} tabIndex={photos.length > 1 ? 0 : undefined} aria-label="Photo viewer. Use left and right arrow keys to browse." onKeyDown={event => {

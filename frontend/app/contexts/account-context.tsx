@@ -1,20 +1,39 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { api } from "../components/api";
 
-export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; profilePhotoUrl: string | null };
+export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; profilePhotoUrl: string | null; votingForAnimalId: string | null };
 
 const AccountContext = createContext<{
   user: User | null;
   setUser: Dispatch<SetStateAction<User | null>>;
   ready: boolean;
   accountError: string;
+  voteBusy: boolean;
+  voteForAnimal: (animalId: string | null) => Promise<void>;
 } | null>(null);
 
 export default function AccountProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [accountError, setAccountError] = useState("");
+  const [voteBusy, setVoteBusy] = useState(false);
+  const voteInFlight = useRef(false);
+
+  async function voteForAnimal(animalId: string | null) {
+    if (!user) throw new Error("Please log in to vote.");
+    if (voteInFlight.current) return;
+    const accountId = user.id;
+    voteInFlight.current = true;
+    setVoteBusy(true);
+    try {
+      const result = await api<{ votingForAnimalId: string | null }>("/api/account/vote", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ animalId }),
+      });
+      setUser(current => current?.id === accountId ? { ...current, votingForAnimalId: result.votingForAnimalId } : current);
+    } finally { voteInFlight.current = false; setVoteBusy(false); }
+  }
 
   useEffect(() => {
     let active = true;
@@ -26,7 +45,7 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  return <AccountContext.Provider value={{ user, setUser, ready, accountError }}>{children}</AccountContext.Provider>;
+  return <AccountContext.Provider value={{ user, setUser, ready, accountError, voteBusy, voteForAnimal }}>{children}</AccountContext.Provider>;
 }
 
 export function useAccount() {

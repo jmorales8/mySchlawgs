@@ -6,6 +6,7 @@ namespace Backend.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<AnimalProfile> AnimalProfiles => Set<AnimalProfile>();
+    public DbSet<VoteSnapshot> VoteSnapshots => Set<VoteSnapshot>();
     public DbSet<AnimalCatalogEntry> AnimalCatalog => Set<AnimalCatalogEntry>();
     public DbSet<Photo> Photos => Set<Photo>();
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
@@ -20,6 +21,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var snapshot = modelBuilder.Entity<VoteSnapshot>();
+        snapshot.ToTable("vote_snapshots", table => table.HasCheckConstraint("CK_vote_snapshots_singleton", "\"Id\" = 1"));
+        snapshot.HasKey(x => x.Id);
+        snapshot.Property(x => x.Id).ValueGeneratedNever();
+        snapshot.Property(x => x.TotalsJson).HasColumnType("jsonb");
+        modelBuilder.Entity<AppUser>().HasOne<AnimalProfile>().WithMany()
+            .HasForeignKey(x => x.VotingForAnimalId).OnDelete(DeleteBehavior.SetNull);
         var catalog = modelBuilder.Entity<AnimalCatalogEntry>();
         catalog.ToTable("animal_catalog");
         catalog.HasKey(x => new { x.Kind, x.AnimalType, x.NormalizedName });

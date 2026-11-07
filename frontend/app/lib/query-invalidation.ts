@@ -3,6 +3,9 @@ export type RefreshMode = "refresh" | "stale" | "ignore";
 /** Reactions change feed membership, but not photo records. Refresh those feeds
  * on their next visit/focus instead of refetching every visible post on a click. */
 export function queryRefreshMode(queryPath: string, mutationPath: string): RefreshMode {
+  // The account provider applies this private selection directly; post data is unchanged.
+  if (mutationPath === "/api/account/vote") return "ignore";
+  if (mutationPath === "/api/votes/refresh") return "ignore";
   if (/^\/api\/notifications(?:\/|$)/.test(mutationPath)) {
     return queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";
   }

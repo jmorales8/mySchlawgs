@@ -5,7 +5,7 @@ import styles from "./privacy.module.css";
 
 const sections = [
   ["collect", "What we collect"], ["use", "How we use it"],
-  ["public", "What’s public"], ["storage", "Storage & retention"],
+  ["public", "What’s public"], ["voting", "Voting privacy"], ["storage", "Storage & retention"],
   ["cookies", "Cookies & security"], ["choices", "Your choices"],
   ["sharing", "Before you share"],
 ];

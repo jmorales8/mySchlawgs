@@ -14,10 +14,23 @@ namespace Backend.Endpoints;
 public static class AccountEndpoints
 {
     public sealed record Credentials(string? Username, string? Password, string? CaptchaToken);
-    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
+    public sealed record VoteInput(Guid? AnimalId);
+    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, user.VotingForAnimalId, profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
 
     public static void MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapPut("/api/account/vote", async (VoteInput input, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var user = await db.Users.FindAsync([Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!)], ct);
+            if (user is null) return Results.Unauthorized();
+            if (input.AnimalId is Guid animalId && !await db.AnimalProfiles.AnyAsync(x => x.Id == animalId, ct))
+                return Results.NotFound(new { message = "This schlawg profile is no longer available." });
+            user.VotingForAnimalId = input.AnimalId;
+            try { await db.SaveChangesAsync(ct); }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23503" })
+            { return Results.Conflict(new { message = "This schlawg profile changed while saving. Please try again." }); }
+            return Results.Ok(new { user.VotingForAnimalId });
+        }).RequireAuthorization().RequireRateLimiting("social");
         var group = endpoints.MapGroup("/api/auth");
         group.MapGet("/captcha", (CaptchaSettings settings) => Results.Ok(new { enabled = settings.Enabled, siteKey = settings.Enabled ? settings.SiteKey : null }));
         group.AddEndpointFilter(async (context, next) => {

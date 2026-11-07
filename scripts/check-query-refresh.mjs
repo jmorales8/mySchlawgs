@@ -27,6 +27,10 @@ try {
     }
     assert.equal(client.getQueryState(["api", "test-account", paths[0]]).isInvalidated, true);
   }
+  const beforeVote = new Map(calls);
+  await invalidateApiQueries(client, "/api/account/vote");
+  for (const path of paths) assert.equal(calls.get(path), beforeVote.get(path), `Vote should not refetch ${path}`);
+  console.log("PASS private votes update account state without refetching feeds");
   console.log("PASS post and comment reactions do not refetch visible feeds or other posts; notifications update");
 
   const feedCalls = calls.get(paths[0]);

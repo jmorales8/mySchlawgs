@@ -11,6 +11,7 @@ import { usePhotoFeed, type Feed } from "../../hooks/use-photo-feed";
 import { useFeedCaughtUp } from "../../hooks/use-feed-caught-up";
 import RandomPost from "./feed/random-post";
 import MySchlawgs from "./profiles/my-schlawgs";
+import VoteLeaders from "./profiles/vote-leaders";
 import ProfileCropper from "../photos/profile-cropper";
 import PhotoEditor from "../photos/photo-editor";
 import Captcha from "../captcha";
@@ -319,6 +320,7 @@ export default function Community({ postId, discovery }: { postId?: string; disc
             {drafts.length > 0 && <button type="button" className={composerStyles.addMore} disabled={busy || drafts.length >= 10} onClick={() => fileRef.current?.click()}>{drafts.length >= 10 ? "10 photo limit reached" : "+ Add more photos"}</button>}
           </div>
         </form></dialog>}
+        {!postId && <VoteLeaders />}
         {user && !postId && <MySchlawgs key={user.id} />}
         <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations" }[discovery] : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
         {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}

@@ -5,6 +5,8 @@
 .postSchlawgs button > img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; aspect-ratio: 1 / 1; border-radius: 50%; object-fit: cover; object-position: 50% 50%; }
 .postSchlawgs button > span { display: grid; place-items: center; width: 100%; height: 100%; line-height: 1; text-align: center; }
 .postSchlawgs.postSchlawgs button:hover { background: var(--soft); border-color: var(--accent); }
+.postSchlawgs li { position: relative; }
+.voteCheck { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--surface); border-radius: 50%; background: var(--accent); color: var(--on-accent); pointer-events: none; }
 .carousel { position: relative; background: var(--photo-mat); }
 .carouselTrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
 .carouselTrack::-webkit-scrollbar { display: none; }

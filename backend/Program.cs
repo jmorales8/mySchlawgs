@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Backend.Models;
 using Backend.Security;
+using Backend.Services;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,9 @@ builder.Services.AddSingleton(captcha);
 builder.Services.AddHttpClient<CaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<VoteSnapshotService>();
+builder.Services.AddHostedService<VoteSnapshotWorker>();
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 52 * 1024 * 1024);
 builder.Services.AddScoped<IPasswordHasher<AppUser>, PasswordHasher<AppUser>>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme).AddCookie(options =>
@@ -86,6 +90,7 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapAccountEndpoints();
+app.MapVoteSnapshotEndpoints();
 app.MapAnimalProfileEndpoints();
 app.MapPhotoEndpoints();
 app.MapPostEndpoints();

@@ -493,12 +493,17 @@ namespace backend.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<Guid?>("VotingForAnimalId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NormalizedUsername")
                         .IsUnique();
 
                     b.HasIndex("ProfilePhotoId");
+
+                    b.HasIndex("VotingForAnimalId");
 
                     b.ToTable("users", (string)null);
                 });
@@ -830,6 +835,26 @@ namespace backend.Data.Migrations
                     b.ToTable("post_reports", (string)null);
                 });
 
+            modelBuilder.Entity("Backend.Models.VoteSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TotalsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("vote_snapshots", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_vote_snapshots_singleton", "\"Id\" = 1");
+                        });
+                });
+
             modelBuilder.Entity("Backend.Models.AnimalProfile", b =>
                 {
                     b.HasOne("Backend.Models.AppUser", null)
@@ -849,6 +874,11 @@ namespace backend.Data.Migrations
                     b.HasOne("Backend.Models.Photo", null)
                         .WithMany()
                         .HasForeignKey("ProfilePhotoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Backend.Models.AnimalProfile", null)
+                        .WithMany()
+                        .HasForeignKey("VotingForAnimalId")
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 

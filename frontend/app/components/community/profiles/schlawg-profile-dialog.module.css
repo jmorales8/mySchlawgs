@@ -2,6 +2,11 @@
 
 .schlawgDialog { position: fixed; inset: 0; width: min(400px, calc(100vw - 28px)); max-height: calc(100dvh - 28px); margin: auto; padding: 0; overflow-y: auto; border: 1px solid var(--control-border); border-radius: 16px; background: var(--surface); color: var(--foreground); box-shadow: 0 24px 80px #0005; }
 .schlawgDialog::backdrop { background: #402d3e99; }
+.schlawgDialog[open], .schlawgDialog[open]::backdrop { animation: profileFadeIn 200ms ease-out both; }
+.schlawgDialog.closing, .schlawgDialog.closing::backdrop { animation: profileFadeOut 160ms ease-in both; }
+@keyframes profileFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes profileFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .schlawgDialog[open], .schlawgDialog[open]::backdrop { animation-duration: 60ms; } }
 .schlawgDialogContent { display: grid; gap: 18px; padding: 18px 24px 24px; }
 .schlawgDialogHeader { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8125rem; }
 .schlawgDialog .schlawgDialogClose { min-width: 40px; min-height: 40px; padding: 6px; border: 1px solid var(--control-border); border-radius: 50%; background: transparent; color: var(--foreground); font: inherit; font-size: 1.25rem; line-height: 1; cursor: pointer; }
@@ -14,3 +19,11 @@
 .schlawgDetails dt { color: var(--muted); }
 .schlawgDetails dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .schlawgDialog :is(button):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.voting { display: grid; justify-items: center; gap: 10px; text-align: center; }
+.voteButton { min-height: 44px; max-width: 100%; padding: 12px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--accent); color: var(--on-accent); font: inherit; font-size: .875rem; font-weight: 600; cursor: pointer; transition: background-color 180ms ease-out; }
+.voteButton:hover:not(:disabled) { background: var(--accent-hover); }
+.voteButton:active:not(:disabled) { background: var(--accent-active); }
+.voteButton:disabled { opacity: .6; cursor: default; }
+.voteHint { margin: 0; color: var(--muted); font-size: .8125rem; line-height: 1.5; }
+.voteError { margin: 0; color: var(--error-ink); font-size: .875rem; }
+@media (prefers-reduced-motion: reduce) { .voteButton { transition: none; } }

@@ -13,6 +13,8 @@ var apiUrl = args.FirstOrDefault() ?? "http://localhost:5006";
 var config = new ConfigurationBuilder().AddJsonFile(Path.GetFullPath("backend/appsettings.json"))
     .AddUserSecrets(typeof(AppDbContext).Assembly).AddEnvironmentVariables().Build();
 await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(config.GetConnectionString("Postgres")).Options);
+if (args.FirstOrDefault() == "--votes-only") { await VoteChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }
+if (args.FirstOrDefault() == "--vote-snapshots-only") { await VoteSnapshotChecks.Run(db); return; }
 if (args.FirstOrDefault() == "--catalog-only") { await AnimalCatalogChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }
 // Explicit repair for a known upload made before batch IDs were recorded.
 if (args.FirstOrDefault() == "--group-photos") {

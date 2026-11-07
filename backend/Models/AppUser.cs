@@ -9,4 +9,5 @@ public sealed class AppUser
     public required string NormalizedUsername { get; set; }
     public required string PasswordHash { get; set; }
     public Guid? ProfilePhotoId { get; set; }
+    public Guid? VotingForAnimalId { get; set; }
 }
