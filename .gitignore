@@ -8,6 +8,7 @@ node_modules/
 
 # Private local credentials and database snapshots
 .env
+backend/resend.local.json
 backups/
 
 # Local AI design tools and generated previews

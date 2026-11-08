@@ -10,4 +10,9 @@ public sealed class AppUser
     public required string PasswordHash { get; set; }
     public Guid? ProfilePhotoId { get; set; }
     public Guid? VotingForAnimalId { get; set; }
+    public string? Email { get; set; }
+    public string? PendingEmail { get; set; }
+    public string? EmailTokenHash { get; set; }
+    public DateTimeOffset? EmailTokenExpiresAt { get; set; }
+    public DateTimeOffset? EmailSentAt { get; set; }
 }

@@ -31,11 +31,29 @@ The default HTTP address is http://localhost:5005. Existing photos are preserved
 
 - Usernames: 3–30 ASCII letters, numbers, or underscores; case-insensitive uniqueness and login.
 - Passwords: 8–128 characters at registration, hashed with ASP.NET Core's salted PasswordHasher. Plaintext passwords are never stored.
-- No email or confirmation step. Registration signs the user in immediately.
+- Registration signs the user in immediately. Signed-in users can add and verify an email through the profile menu's Verify email link. Email verification is optional; existing accounts keep working.
 - HttpOnly, SameSite=Strict cookies last seven days; production cookies require HTTPS.
 - Registration and login are rate limited. Persistent deployments must preserve ASP.NET Data Protection keys so sessions survive restarts.
 
 ## API
+
+### Resend email verification
+
+For local development, put your sending-only Resend key in `backend/resend.local.json`:
+
+```json
+{ "Resend": { "ApiKey": "YOUR_PRIVATE_KEY" } }
+```
+
+This file is ignored by Git and loaded only in Development. Never put the key in frontend code, a NEXT_PUBLIC variable, screenshots, or chat. Restart the backend after configuring it. The default sender is `mySchlawgs <noreply@myschlawgs.lol>`; the domain must be verified in Resend. The frontend origin defaults to `http://localhost:3000` in Development.
+
+Run `npm run db:setup` to apply the email migration, then `npm run dev:docker` to start the app. Open `http://localhost:3000/account/email`, sign in, enter an email address you control, and send the verification email. Click its link and confirm on the page. Check Resend's dashboard if delivery fails.
+
+Production configuration uses backend environment variables `Resend__ApiKey`, `Resend__From`, and `EmailVerification__AppUrl` (the actual public HTTPS frontend origin). Buying the domain does not deploy the site: until hosting is connected, use the local URL on the same computer as the development app. Run EF migrations during deployment before starting the updated backend.
+
+Verification links expire after one hour, are single-use, and are replaced by a new request. Only their SHA-256 hashes are stored. Sending is limited to once per minute and five requests per account per hour. A replacement email does not change the verified address until confirmed. Confirmed addresses are unique across accounts. Emails are available only through authenticated email settings, never public profile responses. Password recovery is not implemented by this feature.
+
+Endpoints: authenticated GET/POST `/api/account/email` (POST body `{ "email": "..." }`), and POST `/api/auth/verify-email` (`{ "userId": "...", "token": "..." }`). All POSTs require the existing `X-Schlawgs-Request: 1` header. No email is sent during registration.
 
 All POST/PATCH requests require `X-Schlawgs-Request: 1`. Browser traffic uses the frontend's same-origin `/api` proxy; cross-origin writes are not enabled.
 

@@ -9,6 +9,8 @@ using Backend.Services;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsDevelopment())
+    builder.Configuration.AddJsonFile("resend.local.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
 // Local provisioning command; admin creation is never exposed through an HTTP endpoint.
 var adminCommand = Array.IndexOf(args, "--create-admin");
 if (adminCommand >= 0)
@@ -21,6 +23,7 @@ var captcha = builder.Configuration.GetSection("Captcha").Get<CaptchaSettings>()
 captcha.Validate(builder.Environment.IsDevelopment());
 builder.Services.AddSingleton(captcha);
 builder.Services.AddHttpClient<CaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient<VerificationEmail>(client => client.Timeout = TimeSpan.FromSeconds(10));
 
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton(TimeProvider.System);
@@ -49,6 +52,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("registration", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
+    options.AddPolicy("email", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
     options.AddPolicy("reports", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
@@ -83,13 +89,14 @@ app.Use(async (context, next) =>
         context.Response.StatusCode = 403;
         return;
     }
-    if (context.Request.Path.StartsWithSegments("/api/auth")) context.Response.Headers.CacheControl = "no-store";
+    if (context.Request.Path.StartsWithSegments("/api/auth") || context.Request.Path.StartsWithSegments("/api/account/email")) context.Response.Headers.CacheControl = "no-store";
     await next();
 });
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapAccountEndpoints();
+app.MapEmailEndpoints();
 app.MapVoteSnapshotEndpoints();
 app.MapAnimalProfileEndpoints();
 app.MapPhotoEndpoints();

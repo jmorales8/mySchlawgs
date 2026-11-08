@@ -5,6 +5,7 @@ using Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
+if (args.FirstOrDefault() == "--email-only") { await EmailVerificationChecks.Run(); return; }
 await CaptchaChecks.Run();
 if (args.FirstOrDefault() == "--captcha-only") return;
 await ImageSanitizerChecks.Run();
@@ -13,6 +14,7 @@ var apiUrl = args.FirstOrDefault() ?? "http://localhost:5006";
 var config = new ConfigurationBuilder().AddJsonFile(Path.GetFullPath("backend/appsettings.json"))
     .AddUserSecrets(typeof(AppDbContext).Assembly).AddEnvironmentVariables().Build();
 await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(config.GetConnectionString("Postgres")).Options);
+if (args.FirstOrDefault() == "--email-api-only") { await EmailApiChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5019"); return; }
 if (args.FirstOrDefault() == "--votes-only") { await VoteChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }
 if (args.FirstOrDefault() == "--vote-snapshots-only") { await VoteSnapshotChecks.Run(db); return; }
 if (args.FirstOrDefault() == "--catalog-only") { await AnimalCatalogChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }
