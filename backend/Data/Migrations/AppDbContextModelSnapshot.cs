@@ -499,12 +499,25 @@ namespace backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTimeOffset?>("PasswordResetExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("PasswordResetSentAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("PendingEmail")
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
                     b.Property<Guid?>("ProfilePhotoId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Username")
                         .IsRequired()

@@ -24,6 +24,16 @@ internal static class EmailVerificationChecks
         Check(body.RootElement.GetProperty("text").GetString()!.Contains($"http://localhost:3000/verify-email#userId={id}&token={token}"), "verification link uses configured origin and fragment");
         Check(body.RootElement.GetProperty("to")[0].GetString() == "test@example.com", "verification recipient");
         Check(body.RootElement.GetProperty("from").GetString() == "mySchlawgs <noreply@myschlawgs.lol>", "verified domain sender");
+        await sender.SendReset(id, "test@example.com", token, default);
+        using (var reset = JsonDocument.Parse(handler.Body!)) {
+            Check(reset.RootElement.GetProperty("text").GetString()!.Contains($"/reset-password#userId={id}&token={token}"), "reset mail uses its own route");
+            Check(reset.RootElement.GetProperty("text").GetString()!.Contains("30 minutes"), "reset mail expiry matches backend");
+        }
+        await sender.SendPasswordChanged(id, "test@example.com", "test-event", default);
+        using (var changed = JsonDocument.Parse(handler.Body!)) {
+            Check(changed.RootElement.GetProperty("subject").GetString() == "Your mySchlawgs password was changed", "password change notification");
+            Check(!changed.RootElement.GetProperty("text").GetString()!.Contains(token), "notification contains no reset token");
+        }
         handler.Status = HttpStatusCode.TooManyRequests;
         try { await sender.Send(id, "test@example.com", token, default); throw new Exception("Provider failure ignored"); }
         catch (HttpRequestException) { Console.WriteLine("PASS provider failures propagate"); }

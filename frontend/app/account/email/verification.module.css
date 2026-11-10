@@ -12,3 +12,8 @@
 .page :is(input, button, a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .message { color: var(--foreground); }
 .error { color: var(--error-ink); }
+.page .resetForm { display: grid; gap: 12px; }
+.page .resetForm label { margin-bottom: 0; }
+.page .resetForm p { margin: 0; }
+.page .resetForm .error { color: var(--error-ink); font-size: 1.25rem; }
+.page .resetForm button { justify-self: start; }

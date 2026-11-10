@@ -15,4 +15,8 @@ public sealed class AppUser
     public string? EmailTokenHash { get; set; }
     public DateTimeOffset? EmailTokenExpiresAt { get; set; }
     public DateTimeOffset? EmailSentAt { get; set; }
+    public string? PasswordResetHash { get; set; }
+    public DateTimeOffset? PasswordResetExpiresAt { get; set; }
+    public DateTimeOffset? PasswordResetSentAt { get; set; }
+    public int SessionVersion { get; set; }
 }

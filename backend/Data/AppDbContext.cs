@@ -117,6 +117,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         user.Property(x => x.Email).HasMaxLength(254);
         user.Property(x => x.PendingEmail).HasMaxLength(254);
         user.Property(x => x.EmailTokenHash).HasMaxLength(64);
+        user.Property(x => x.PasswordResetHash).HasMaxLength(64);
         user.HasIndex(x => x.Email).IsUnique();
         user.HasOne<Photo>().WithMany().HasForeignKey(x => x.ProfilePhotoId).OnDelete(DeleteBehavior.SetNull);
         var photo = modelBuilder.Entity<Photo>();

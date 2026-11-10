@@ -24,6 +24,8 @@ captcha.Validate(builder.Environment.IsDevelopment());
 builder.Services.AddSingleton(captcha);
 builder.Services.AddHttpClient<CaptchaVerifier>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddHttpClient<VerificationEmail>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddSingleton<PasswordResetDelivery>();
+builder.Services.AddHostedService(provider => provider.GetRequiredService<PasswordResetDelivery>());
 
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton(TimeProvider.System);
@@ -38,6 +40,14 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.Cookie.SameSite = SameSiteMode.Strict;
     options.Cookie.SecurePolicy = builder.Environment.IsDevelopment() ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.Events.OnValidatePrincipal = async context => {
+        var id = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var version = context.Principal?.FindFirst("session-version")?.Value ?? "0";
+        if (!Guid.TryParse(id, out var userId)) { context.RejectPrincipal(); return; }
+        var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+        var current = await db.Users.Where(x => x.Id == userId).Select(x => (int?)x.SessionVersion).SingleOrDefaultAsync(context.HttpContext.RequestAborted);
+        if (current is null || version != current.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)) context.RejectPrincipal();
+    };
     options.Events.OnRedirectToLogin = context => { context.Response.StatusCode = 401; return Task.CompletedTask; };
     options.Events.OnRedirectToAccessDenied = context => { context.Response.StatusCode = 403; return Task.CompletedTask; };
 });
@@ -54,6 +64,9 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10) }));
     options.AddPolicy("email", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
+    options.AddPolicy("recovery", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1) }));
     options.AddPolicy("reports", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
@@ -97,6 +110,7 @@ app.UseRateLimiter();
 app.UseAuthorization();
 app.MapAccountEndpoints();
 app.MapEmailEndpoints();
+app.MapPasswordResetEndpoints();
 app.MapVoteSnapshotEndpoints();
 app.MapAnimalProfileEndpoints();
 app.MapPhotoEndpoints();

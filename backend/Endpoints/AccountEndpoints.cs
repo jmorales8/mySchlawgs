@@ -77,6 +77,6 @@ public static class AccountEndpoints
 
     private static Task SignIn(HttpContext context, AppUser user) => context.SignInAsync(
         CookieAuthenticationDefaults.AuthenticationScheme,
-        new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(ClaimTypes.Name, user.Username)], CookieAuthenticationDefaults.AuthenticationScheme)),
+        new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim(ClaimTypes.Name, user.Username), new Claim("session-version", user.SessionVersion.ToString(System.Globalization.CultureInfo.InvariantCulture))], CookieAuthenticationDefaults.AuthenticationScheme)),
         new AuthenticationProperties { IsPersistent = true });
 }

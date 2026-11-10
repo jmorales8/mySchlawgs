@@ -53,6 +53,8 @@ public static class EmailEndpoints
             var user = await db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {input.UserId} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (user?.PendingEmail is null || user.EmailTokenExpiresAt <= DateTimeOffset.UtcNow || user.EmailTokenExpiresAt is null || user.EmailTokenHash != VerificationEmail.Hash(input.Token)) return InvalidLink();
             user.Email = user.PendingEmail;
+            user.PasswordResetHash = null;
+            user.PasswordResetExpiresAt = null;
             user.PendingEmail = null;
             user.EmailTokenHash = null;
             user.EmailTokenExpiresAt = null;

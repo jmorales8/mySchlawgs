@@ -38,6 +38,7 @@ export default function Community({ postId, discovery }: { postId?: string; disc
   const [captchaAttempt, setCaptchaAttempt] = useState(0);
   const updateCaptcha = useCallback((token: string | null) => setCaptchaToken(token), []);
   const [error, setError] = useState("");
+  const [authError, setAuthError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const { data: photos = [], loading: feedLoading, refreshing: feedRefreshing, error: feedError, refresh } = usePhotoFeed(feed, postId);
@@ -163,13 +164,13 @@ export default function Community({ postId, discovery }: { postId?: string; disc
 
   async function authenticate(event: FormEvent<HTMLFormElement>) {
     if (captchaToken === null) { event.preventDefault(); return; }
-    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    event.preventDefault(); setBusy(true); setAuthError(""); setError(""); setNotice("");
     const data = new FormData(event.currentTarget);
     try {
       setUser(await api<User>(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: data.get("username"), password: data.get("password"), captchaToken }) }));
       if (mode === "register") openTutorial();
       setNotice(mode === "register" ? "Very much welcome Schlawg! Add a profile picture and share your first moment." : "Welcome back!");
-    } catch (e) { setError((e as Error).message); } finally { setBusy(false); setCaptchaToken(null); setCaptchaAttempt(value => value + 1); }
+    } catch (e) { setAuthError((e as Error).message); } finally { setBusy(false); setCaptchaToken(null); setCaptchaAttempt(value => value + 1); }
   }
 
   function chooseFiles(files: FileList | null) {
@@ -256,10 +257,12 @@ export default function Community({ postId, discovery }: { postId?: string; disc
             <form onSubmit={authenticate} className={layoutStyles.form}>
               <label>Username<input name="username" autoComplete="username" required minLength={3} maxLength={30} pattern="[a-zA-Z0-9_]+" placeholder="e.g. milos_human" /></label>
               <label>Password<input name="password" type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} required minLength={mode === "register" ? 8 : 1} maxLength={128} placeholder={mode === "register" ? "At least 8 characters" : "Your password"} /></label>
+              <Link className={layoutStyles.forgotPassword} href="/forgot-password">Forgot password?</Link>
               <Captcha key={captchaAttempt} onChange={updateCaptcha} />
+              {authError && <p className={layoutStyles.authError} role="alert">{authError}</p>}
               <button disabled={busy || captchaToken === null}>{busy ? "One moment…" : mode === "register" ? "Join the big group schlawgs" : "Log in"}</button>
             </form>
-            <button className={layoutStyles.textButton} disabled={busy} onClick={() => { setMode(mode === "register" ? "login" : "register"); setError(""); }}>{mode === "register" ? "Already a member? Log in" : "New here? Create an account"}</button>
+            <button className={layoutStyles.textButton} disabled={busy} onClick={() => { setMode(mode === "register" ? "login" : "register"); setAuthError(""); setError(""); }}>{mode === "register" ? "Already a member? Log in" : "New here? Create an account"}</button>
         </section>
       </aside>}
       <section className={`${layoutStyles.content} ${postId ? layoutStyles.singlePost : ""}`} id="feed">

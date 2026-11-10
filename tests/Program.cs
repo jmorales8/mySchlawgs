@@ -15,6 +15,8 @@ var config = new ConfigurationBuilder().AddJsonFile(Path.GetFullPath("backend/ap
     .AddUserSecrets(typeof(AppDbContext).Assembly).AddEnvironmentVariables().Build();
 await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(config.GetConnectionString("Postgres")).Options);
 if (args.FirstOrDefault() == "--email-api-only") { await EmailApiChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5019"); return; }
+if (args.FirstOrDefault() == "--password-reset-only") { await PasswordResetChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5019"); return; }
+if (args.FirstOrDefault() == "--password-request-only") { await PasswordResetRequestChecks.Run(db); return; }
 if (args.FirstOrDefault() == "--votes-only") { await VoteChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }
 if (args.FirstOrDefault() == "--vote-snapshots-only") { await VoteSnapshotChecks.Run(db); return; }
 if (args.FirstOrDefault() == "--catalog-only") { await AnimalCatalogChecks.Run(db, args.ElementAtOrDefault(1) ?? "http://localhost:5005"); return; }

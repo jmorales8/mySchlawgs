@@ -51,7 +51,17 @@ Run `npm run db:setup` to apply the email migration, then `npm run dev:docker` t
 
 Production configuration uses backend environment variables `Resend__ApiKey`, `Resend__From`, and `EmailVerification__AppUrl` (the actual public HTTPS frontend origin). Buying the domain does not deploy the site: until hosting is connected, use the local URL on the same computer as the development app. Run EF migrations during deployment before starting the updated backend.
 
-Verification links expire after one hour, are single-use, and are replaced by a new request. Only their SHA-256 hashes are stored. Sending is limited to once per minute and five requests per account per hour. A replacement email does not change the verified address until confirmed. Confirmed addresses are unique across accounts. Emails are available only through authenticated email settings, never public profile responses. Password recovery is not implemented by this feature.
+Verification links expire after one hour, are single-use, and are replaced by a new request. Only their SHA-256 hashes are stored. Sending is limited to once per minute and five requests per account per hour. A replacement email does not change the verified address until confirmed. Confirmed addresses are unique across accounts. Emails are available only through authenticated email settings, never public profile responses.
+
+### Password recovery
+
+The Forgot password? link appears directly beneath the password field in both login and signup. `/forgot-password` accepts a previously verified email and the existing CAPTCHA. POST `/api/auth/forgot-password` returns the same confirmation for unknown, pending, and verified addresses. Delivery is asynchronous to avoid revealing an account through provider response timing. Requests are limited to five per IP per hour and one email per account per minute. Only the latest reset link works, for 30 minutes. Emails use the same Resend settings as verification.
+
+`/reset-password` reads a token from the email link's URL fragment and removes it from the address bar. POST `/api/auth/reset-password` accepts `userId`, `token`, `password`, and `confirmPassword`. Both passwords must match and meet the existing 8–128 character policy. A successful reset hashes the new password, consumes the reset token, invalidates pending email changes and all existing sessions, and queues a password-change notification. It does not automatically log in. Changing a verified email also revokes outstanding password reset links. Accounts without a verified address cannot use email recovery.
+
+Delivery uses a bounded in-memory queue. Pending messages are lost on restart, and failed deliveries are logged without secrets; the user can request another link. Use a durable outbox before requiring guaranteed delivery across restarts or provider outages. Neither message logs nor API responses contain reset tokens. Existing cookies without a session-version claim remain valid until the account's first password reset.
+
+Tests: `dotnet run --project tests/SmokeTests.csproj -c Release -- --email-only` tests mail payloads with a fake provider. `--password-reset-only http://localhost:5019` runs database/API checks against a test server with Development CAPTCHA disabled; it creates and cleans up its own fixture and does not need real mail delivery.
 
 Endpoints: authenticated GET/POST `/api/account/email` (POST body `{ "email": "..." }`), and POST `/api/auth/verify-email` (`{ "userId": "...", "token": "..." }`). All POSTs require the existing `X-Schlawgs-Request: 1` header. No email is sent during registration.
 

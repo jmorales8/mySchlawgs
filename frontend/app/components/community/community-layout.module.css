@@ -21,6 +21,9 @@
 .content { min-width: 0; }
 .profile { display: flex; flex-direction: column; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 27px; margin-bottom: 24px;}
 .form { display: grid; gap: 18px; margin-top: 24px; }
+.form .forgotPassword { justify-self: start; margin-top: -10px; color: var(--link); font-size: .875rem; text-underline-offset: 3px; }
+.form .forgotPassword:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.form .authError { margin: 0; color: var(--error-ink); font-size: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
 .profile .form { width: 100%; min-width: 0; }
 .profile .form > * { min-width: 0; }
 .form + .textButton { margin-top: 8px; }
