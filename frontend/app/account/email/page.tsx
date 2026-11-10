@@ -10,12 +10,13 @@ type EmailStatus = { email: string | null; pendingEmail: string | null; enabled:
 
 export default function EmailPage() {
   const { user, ready, accountError } = useAccount();
-  return <main className={styles.page}><Link href="/">Back to the community</Link><h1>Verify your email</h1>
+  return <main className={styles.page}><Link href="/">Back to the community</Link><h1>{user?.verifiedEmail ? "Your email is verified" : "Verify your email"}</h1>
     {!ready ? <p role="status">Getting your account…</p> : accountError ? <p role="alert">{accountError}</p> : !user ? <p><Link href="/#account">Log in or create an account</Link> to add your email.</p> : <EmailForm key={user.id} />}
   </main>;
 }
 
 function EmailForm() {
+  const { user } = useAccount();
   const [status, setStatus] = useState<EmailStatus | null>(null);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,14 +48,15 @@ function EmailForm() {
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
+  if (user?.verifiedEmail) return <p className={styles.message}>Verified Email: <strong>{user.verifiedEmail}</strong></p>;
   return <section>
-    <p>Add an email address to your account. Your username and password will stay the same.</p>
+    {!status?.email && <p>Add an email address to your account. Your username and password will stay the same.</p>}
     {status?.email && <p className={styles.message}>Verified email: <strong>{status.email}</strong></p>}
-    {status?.pendingEmail && <p className={styles.message}>Waiting for verification: <strong>{status.pendingEmail}</strong>. Check your inbox and spam folder.</p>}
+    {!status?.email && status?.pendingEmail && <p className={styles.message}>Waiting for verification: <strong>{status.pendingEmail}</strong>. Check your inbox and spam folder.</p>}
     {!status && !error && <p role="status">Loading email settings…</p>}
     {!status && error && <button onClick={() => { setError(""); setAttempt(value => value + 1); }}>Try again</button>}
-    {status && !status.enabled && <p>Email sending isn’t configured yet. Please try again later.</p>}
-    {status?.enabled && <form onSubmit={send}>
+    {status && !status.email && !status.enabled && <p>Email sending isn’t configured yet. Please try again later.</p>}
+    {status?.enabled && !status.email && <form onSubmit={send}>
       <label htmlFor="account-email">Email address</label>
       <input id="account-email" type="email" autoComplete="email" maxLength={254} required value={email} onChange={event => setEmail(event.target.value)} disabled={busy} aria-describedby="email-help" />
       <p id="email-help">We’ll send a confirmation link that expires in 1 hour. Requesting another link replaces the previous one.</p>

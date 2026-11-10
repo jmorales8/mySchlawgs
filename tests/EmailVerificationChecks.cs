@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Backend.Services;
+using Backend.Endpoints;
 using Microsoft.Extensions.Configuration;
 
 internal static class EmailVerificationChecks
@@ -8,6 +9,9 @@ internal static class EmailVerificationChecks
     public static async Task Run()
     {
         void Check(bool value, string name) { if (!value) throw new Exception(name); Console.WriteLine($"PASS {name}"); }
+        Check(AccountEndpoints.MaskEmail("jane@gmail.com") == "j***e@gmail.com", "verified email keeps first and last characters and three stars");
+        Check(AccountEndpoints.MaskEmail("a@gmail.com") == "a***a@gmail.com", "single-character email uses consistent three-star mask");
+        Check(AccountEndpoints.MaskEmail(null) is null, "unverified account has no verified email label");
         Check(VerificationEmail.Normalize(" Test@Example.com ") == "test@example.com", "email normalization");
         foreach (var invalid in new[] { "", "not-email", "Someone <user@example.com>", "a@localhost", "a@example.com\r\nBcc: victim@example.com" })
             Check(VerificationEmail.Normalize(invalid) is null, "invalid email rejected");

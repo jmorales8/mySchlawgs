@@ -31,7 +31,7 @@ The default HTTP address is http://localhost:5005. Existing photos are preserved
 
 - Usernames: 3–30 ASCII letters, numbers, or underscores; case-insensitive uniqueness and login.
 - Passwords: 8–128 characters at registration, hashed with ASP.NET Core's salted PasswordHasher. Plaintext passwords are never stored.
-- Registration signs the user in immediately. Signed-in users can add and verify an email through the profile menu's Verify email link. Email verification is optional; existing accounts keep working.
+- Registration signs the user in immediately. Signed-in users can add and verify an email through the profile menu's Verify email link. Once verified, that item becomes non-clickable `Verified Email: j***e@gmail.com` (first and last local-part characters, always three stars). The entry form and further email changes are disabled. Email verification is optional; existing accounts keep working.
 - HttpOnly, SameSite=Strict cookies last seven days; production cookies require HTTPS.
 - Registration and login are rate limited. Persistent deployments must preserve ASP.NET Data Protection keys so sessions survive restarts.
 

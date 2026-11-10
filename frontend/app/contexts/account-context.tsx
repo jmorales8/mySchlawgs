@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { api } from "../components/api";
+import { API_CHANGED, type ApiChange } from "../lib/api-events";
 
-export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; profilePhotoUrl: string | null; votingForAnimalId: string | null };
+export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; verifiedEmail: string | null; profilePhotoUrl: string | null; votingForAnimalId: string | null };
 
 const AccountContext = createContext<{
   user: User | null;
@@ -44,6 +45,26 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
       .finally(() => { if (active) setReady(true); });
     return () => { active = false; };
   }, []);
+
+  const currentUserId = user?.id;
+  useEffect(() => {
+    if (!currentUserId) return;
+    let active = true;
+    async function refreshAccount() {
+      try {
+        const account = await api<User>("/api/auth/me");
+        if (active) setUser(current => current?.id === currentUserId && account.id === currentUserId ? account : current);
+      } catch { /* Keep the current account during temporary connectivity problems. */ }
+    }
+    function changed(event: Event) {
+      if ((event as CustomEvent<ApiChange>).detail?.path === "/api/auth/verify-email") void refreshAccount();
+    }
+    function visible() { if (document.visibilityState === "visible") void refreshAccount(); }
+    window.addEventListener("focus", refreshAccount);
+    document.addEventListener("visibilitychange", visible);
+    window.addEventListener(API_CHANGED, changed);
+    return () => { active = false; window.removeEventListener("focus", refreshAccount); document.removeEventListener("visibilitychange", visible); window.removeEventListener(API_CHANGED, changed); };
+  }, [currentUserId]);
 
   return <AccountContext.Provider value={{ user, setUser, ready, accountError, voteBusy, voteForAnimal }}>{children}</AccountContext.Provider>;
 }

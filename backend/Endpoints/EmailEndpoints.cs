@@ -28,6 +28,7 @@ public static class EmailEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var user = await db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (user is null) return Results.Unauthorized();
+            if (user.Email is not null) return Results.BadRequest(new { message = "Your email address is already verified." });
             var now = DateTimeOffset.UtcNow;
             if (user.EmailSentAt > now.AddMinutes(-1)) return Results.Json(new { message = "Wait a minute before requesting another email." }, statusCode: 429);
             if (user.Email == email) return Results.BadRequest(new { message = "This email address is already verified." });
@@ -51,6 +52,7 @@ public static class EmailEndpoints
             if (input.Token is null || input.Token.Length != 64 || !input.Token.All(Uri.IsHexDigit)) return InvalidLink();
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var user = await db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {input.UserId} FOR UPDATE").SingleOrDefaultAsync(ct);
+            if (user?.Email is not null) return Results.BadRequest(new { message = "Your email address is already verified." });
             if (user?.PendingEmail is null || user.EmailTokenExpiresAt <= DateTimeOffset.UtcNow || user.EmailTokenExpiresAt is null || user.EmailTokenHash != VerificationEmail.Hash(input.Token)) return InvalidLink();
             user.Email = user.PendingEmail;
             user.PasswordResetHash = null;

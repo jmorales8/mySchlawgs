@@ -15,7 +15,13 @@ public static class AccountEndpoints
 {
     public sealed record Credentials(string? Username, string? Password, string? CaptchaToken);
     public sealed record VoteInput(Guid? AnimalId);
-    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, user.VotingForAnimalId, profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
+    public static string? MaskEmail(string? email)
+    {
+        if (email is null) return null;
+        var at = email.LastIndexOf('@');
+        return at > 0 ? $"{email[0]}***{email[at - 1]}{email[at..]}" : null;
+    }
+    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, user.VotingForAnimalId, verifiedEmail = MaskEmail(user.Email), profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
 
     public static void MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {
