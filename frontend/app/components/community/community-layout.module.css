@@ -26,6 +26,11 @@
 .form .forgotPassword:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .form .authError { margin: 0; color: var(--error-ink); font-size: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
 .profile .form { width: 100%; min-width: 0; }
+.profile h2.accountHeading {
+  font-size: clamp(2rem, 1.8rem + 1vw, 2.25rem);
+  font-weight: 700;
+  text-align: center;
+}
 .profile .form > * { min-width: 0; }
 .form + .textButton { margin-top: 8px; }
 .sidebar .avatar { width: 76px; height: 76px; font-size: 34px; margin-bottom: 20px; }

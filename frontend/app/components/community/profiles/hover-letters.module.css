@@ -1,0 +1,12 @@
+.word { display: inline-block; max-width: 100%; }
+.letter, .letter > span { display: inline-block; }
+.letter > span { pointer-events: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .letter > span { transition: transform 160ms cubic-bezier(.16, 1, .3, 1); }
+  :is(a, button):focus-visible .letter > span { transform: translateY(-3px); }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .letter:hover > span { transform: translateY(-3px); }
+}

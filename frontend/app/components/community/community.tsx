@@ -219,11 +219,6 @@ export default function Community({ postId, discovery }: { postId?: string; disc
   }
 
   function openPostComposer() {
-    if (!user) {
-      setNotice("Log in or create an account to share a post.");
-      document.querySelector<HTMLInputElement>('#account input[name="username"]')?.focus();
-      return;
-    }
     setError(""); setComposerOpen(true);
   }
 
@@ -267,8 +262,8 @@ export default function Community({ postId, discovery }: { postId?: string; disc
       </Link>
       {!mobileNavigation && accountMenu}
     </div>
-      {!postId && (
-        <button type="button" className={layoutStyles.mobilePostButton} disabled={!ready || busy} aria-haspopup="dialog" onClick={openPostComposer}>
+      {!postId && ready && user && (
+        <button type="button" className={layoutStyles.mobilePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>
           <span aria-hidden="true">📷+</span>Post
         </button>
       )}
@@ -278,7 +273,7 @@ export default function Community({ postId, discovery }: { postId?: string; disc
           <button type="button" aria-pressed={feed === "latest"} onClick={() => chooseFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
           <button type="button" aria-pressed={feed === "interacted"} onClick={() => chooseFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
           <button type="button" aria-pressed={feed === "mine"} onClick={() => chooseFeed("mine")}>My photos</button>
-          <button type="button" className={layoutStyles.sharePostButton} disabled={!ready || busy} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>
+          {ready && user && <button type="button" className={layoutStyles.sharePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>}
         </div>}
       <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} collapsible={mobileNavigation} />
       {mobileNavigation && accountMenu}
@@ -288,7 +283,8 @@ export default function Community({ postId, discovery }: { postId?: string; disc
     <div className={`${layoutStyles.layout} ${!ready || user ? layoutStyles.memberLayout : ""}`}>
       {ready && !user && <aside className={layoutStyles.sidebar} id="account">
         <section className={layoutStyles.profile}>
-            <p className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>There more room for ya!</p><h2>{mode === "register" ? "Make yourself at home." : "Welcome back."}</h2>
+            <h2 className={layoutStyles.accountHeading}>{mode === "register" ? "Create an Account" : "Log in"}</h2>
+            <p className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>There more room for ya!</p>
             <p className={sharedStyles.muted}>{mode === "register" ? "Create an account to share your animals. No email needed." : "Log in to share another good moment."}</p>
             <form onSubmit={authenticate} className={layoutStyles.form}>
               <label>Username<input name="username" autoComplete="username" required minLength={3} maxLength={30} pattern="[a-zA-Z0-9_]+" placeholder="e.g. milos_human" /></label>

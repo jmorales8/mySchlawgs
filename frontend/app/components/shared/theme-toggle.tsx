@@ -2,24 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 import styles from "./theme-toggle.module.css";
-
-const key = "myschlawgs-theme";
-const eventName = "myschlawgs-theme-change";
+import { themeChangeEvent, themeCookie, themeKey } from "./theme-preference";
 
 function subscribe(onChange: () => void) {
-  function sync(event: StorageEvent) {
-    if (event.key !== key && event.key !== null) return;
-    const value = event.newValue;
-    document.documentElement.dataset.theme = value === "dark" || value === "light"
-      ? value : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    onChange();
-  }
-  window.addEventListener(eventName, onChange);
-  window.addEventListener("storage", sync);
-  return () => {
-    window.removeEventListener(eventName, onChange);
-    window.removeEventListener("storage", sync);
-  };
+  window.addEventListener(themeChangeEvent, onChange);
+  return () => window.removeEventListener(themeChangeEvent, onChange);
 }
 
 export default function ThemeToggle() {
@@ -28,8 +15,9 @@ export default function ThemeToggle() {
   function toggle() {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
-    try { localStorage.setItem(key, next); } catch { /* Keep switching usable when storage is blocked. */ }
-    window.dispatchEvent(new Event(eventName));
+    document.cookie = themeCookie(next);
+    try { localStorage.setItem(themeKey, next); } catch { /* Keep switching usable when storage is blocked. */ }
+    window.dispatchEvent(new Event(themeChangeEvent));
   }
   return <button type="button" className={styles.toggle} onClick={toggle}
     aria-label="Dark mode" aria-pressed={dark} title={dark ? "Switch to light mode" : "Switch to dark mode"}>

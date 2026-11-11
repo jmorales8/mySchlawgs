@@ -8,6 +8,7 @@ import NotificationBell from "../../notifications/notification-bell";
 import styles from "./my-schlawgs.module.css";
 import sharedStyles from "../community.module.css";
 import SchlawgProfileDialog from "./schlawg-profile-dialog";
+import HoverLetters from "./hover-letters";
 
 type Animal = { id: string; name: string; animalType: string; breed: string; funFact: string; profilePhotoUrl: string | null };
 const gardenAnimals = ["🐶", "🐱", "🐰", "🐹", "🐭", "🐦", "🐠", "🐢", "🦎", "🐸", "🐴", "🐮", "🐷", "🐥", "🦊", "🦉", "🦦", "🦔", "🦜", "🦋", "🐌"];
@@ -86,10 +87,10 @@ export default function MySchlawgs() {
     <div className={styles.schlawgsHeading}>
       <div>
         <h2 id={heading}><Link className={styles.gardenLink} href="/account/animals" aria-label="Da Schlawg Garden — View all & add schlawgs">
-          {"Da Schlawg Garden".split(" ").map((word, wordIndex) => <span key={word} aria-hidden="true">{wordIndex > 0 && " "}<span className={styles.gardenWord}>{[...word].map((letter, index) => <span className={styles.gardenLetter} key={index}>{letter}</span>)}</span></span>)}
+          <HoverLetters text="Da Schlawg Garden" />
           <span className={styles.gardenArrow} aria-hidden="true">↗</span>
         </Link></h2>
-        <p className={styles.gardenHint}><Link className={styles.gardenLink} href="/account/animals" aria-label="View all & add schlawgs">{"View all & add schlawgs".split(" ").map((word, wordIndex) => <span key={`${wordIndex}-${word}`} aria-hidden="true">{wordIndex > 0 && " "}<span className={styles.gardenWord}>{[...word].map((letter, index) => <span className={styles.gardenLetter} key={index}>{letter}</span>)}</span></span>)}</Link></p>
+        <p className={styles.gardenHint}><Link className={styles.gardenLink} href="/account/animals" aria-label="View all & add schlawgs"><HoverLetters text="View all & add schlawgs" /></Link></p>
       </div>
       <NotificationBell onOpen={() => {}} onClose={() => {}} />
     </div>
