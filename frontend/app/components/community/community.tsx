@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import sharedStyles from "./community.module.css";
 import composerStyles from "./post-composer.module.css";
 import layoutStyles from "./community-layout.module.css";
@@ -29,7 +29,16 @@ import PhotoCard from "./feed/photo-card";
 type AnimalOption = { id: string; name: string; animalType: string; profilePhotoUrl: string | null };
 type Draft = { file: File; url: string; description: string; animalIds: string[] };
 
+function subscribeMobileNavigation(onChange: () => void) {
+  const query = window.matchMedia("(max-width: 760px)");
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+function mobileNavigationSnapshot() { return window.matchMedia("(max-width: 760px)").matches; }
+function serverNavigationSnapshot() { return false; }
+
 export default function Community({ postId, discovery }: { postId?: string; discovery?: "popular" | "niche" | "relevant" }) {
+  const mobileNavigation = useSyncExternalStore(subscribeMobileNavigation, mobileNavigationSnapshot, serverNavigationSnapshot);
   const openTutorial = useTutorial();
   const [feed, setFeed] = useState<Feed>("latest");
   const { user, setUser, ready, accountError } = useAccount();
@@ -209,6 +218,29 @@ export default function Community({ postId, discovery }: { postId?: string; disc
     finally { setBusy(false); }
   }
 
+  function openPostComposer() {
+    if (!user) {
+      setNotice("Log in or create an account to share a post.");
+      document.querySelector<HTMLInputElement>('#account input[name="username"]')?.focus();
+      return;
+    }
+    setError(""); setComposerOpen(true);
+  }
+
+  const accountMenu = user && <details open={accountMenuOpen} className={layoutStyles.accountMenu} ref={accountRef} onKeyDown={event => {
+        if (event.key === "Escape") { event.preventDefault(); closeAccountMenu(); accountRef.current?.querySelector("summary")?.focus(); }
+      }}><summary className={layoutStyles.accountTrigger} aria-expanded={accountMenuOpen && !accountMenuClosing} aria-label={`Account options for ${user.username}`} onClick={event => {
+        event.preventDefault();
+        if (accountMenuClosing) setAccountMenuClosing(false);
+        else if (accountMenuOpen) closeAccountMenu();
+        else { setAccountMenuClosing(false); setAccountMenuOpen(true); }
+      }}>
+        <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
+      </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}><span className={layoutStyles.mobileAccountName}>@{user.username}</span>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}            <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
+            <ThemeToggle />
+            {user.verifiedEmail ? <span className={layoutStyles.verifiedEmail}>Verified Email: {user.verifiedEmail}</span> : <Link href="/account/email" className={layoutStyles.textButton}>Verify email</Link>}
+            <button className={layoutStyles.textButton} disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await api("/api/auth/logout", { method: "POST" }); setAccountMenuOpen(false); setAccountMenuClosing(false); setUser(null); chooseFeed("latest"); clearDrafts(); setNotice(""); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>Log out</button></div>}</details>;
+
   return <main className={sharedStyles.shell} id="top">
     <div className={composerStyles.uploadToastRegion} role="status" aria-live="polite" aria-atomic="true">
       {uploadToast && <div className={composerStyles.uploadToast} data-success={uploadToast.success}><span aria-hidden="true">{uploadToast.success ? "✓" : "ⓘ"}</span>{uploadToast.message}<button type="button" aria-label="Dismiss upload notification" onClick={() => setUploadToast(null)}>✕</button></div>}
@@ -223,31 +255,35 @@ export default function Community({ postId, discovery }: { postId?: string; disc
     }} />}
     {profileFile && <ProfileCropper file={profileFile} onCancel={() => setProfileFile(null)} onSave={profile} />}
     <div className={layoutStyles.feedFrame}>
-    <nav className={layoutStyles.nav} aria-label="Main navigation"><div className={layoutStyles.brandGroup}>
-      <Link className={layoutStyles.brand} href="/"><span className={layoutStyles.brandText}>mySchlawgs</span></Link>
-      {user && <details open={accountMenuOpen} className={layoutStyles.accountMenu} ref={accountRef} onKeyDown={event => {
-        if (event.key === "Escape") { event.preventDefault(); closeAccountMenu(); accountRef.current?.querySelector("summary")?.focus(); }
-      }}><summary className={layoutStyles.accountTrigger} aria-expanded={accountMenuOpen && !accountMenuClosing} aria-label={`Account options for ${user.username}`} onClick={event => {
-        event.preventDefault();
-        if (accountMenuClosing) setAccountMenuClosing(false);
-        else if (accountMenuOpen) closeAccountMenu();
-        else { setAccountMenuClosing(false); setAccountMenuOpen(true); }
-      }}>
-        <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
-      </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}            <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
-            <ThemeToggle />
-            {user.verifiedEmail ? <span className={layoutStyles.verifiedEmail}>Verified Email: {user.verifiedEmail}</span> : <Link href="/account/email" className={layoutStyles.textButton}>Verify email</Link>}
-            <button className={layoutStyles.textButton} disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await api("/api/auth/logout", { method: "POST" }); setAccountMenuOpen(false); setAccountMenuClosing(false); setUser(null); chooseFeed("latest"); clearDrafts(); setNotice(""); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>Log out</button></div>}</details>}
+    <nav className={layoutStyles.nav} aria-label="Main navigation">
+      <div className={layoutStyles.brandGroup}>
+      <Link className={layoutStyles.brand} href="/" aria-label="mySchlawgs">
+        <span className={layoutStyles.brandText}>mySchlawgs</span>
+        {!postId && <svg className={layoutStyles.curvedBrand} viewBox="0 0 124 84" aria-hidden="true">
+          <text>
+            <textPath path="M 14 75 V 60 Q 15 23 44 21 H 121" textLength="136" lengthAdjust="spacingAndGlyphs">mySchlawgs</textPath>
+          </text>
+        </svg>}
+      </Link>
+      {!mobileNavigation && accountMenu}
     </div>
+      {!postId && (
+        <button type="button" className={layoutStyles.mobilePostButton} disabled={!ready || busy} aria-haspopup="dialog" onClick={openPostComposer}>
+          <span aria-hidden="true">📷+</span>Post
+        </button>
+      )}
+      {mobileNavigation && !postId && <VoteLeaders compact />}
+      <div className={layoutStyles.bottomNavigation} data-active={mobileNavigation}>
       {!postId && <div className={layoutStyles.feedMenu} role="group" aria-label="Choose your feed">
-          <button type="button" aria-pressed={feed === "latest"} onClick={() => chooseFeed("latest")}>Latest moments</button>
-          <button type="button" aria-pressed={feed === "interacted"} onClick={() => chooseFeed("interacted")}>Liked / interacted</button>
+          <button type="button" aria-pressed={feed === "latest"} onClick={() => chooseFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
+          <button type="button" aria-pressed={feed === "interacted"} onClick={() => chooseFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
           <button type="button" aria-pressed={feed === "mine"} onClick={() => chooseFeed("mine")}>My photos</button>
-          <button type="button" className={layoutStyles.sharePostButton} disabled={!ready || busy} aria-haspopup="dialog" onClick={() => { if (!user) { setNotice("Log in or create an account to share a post."); document.querySelector<HTMLInputElement>('#account input[name="username"]')?.focus(); return; } setError(""); setComposerOpen(true); }}>+ Share a post</button>
+          <button type="button" className={layoutStyles.sharePostButton} disabled={!ready || busy} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>
         </div>}
-      <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} />
+      <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} collapsible={mobileNavigation} />
+      {mobileNavigation && accountMenu}
+      </div>
 
-      <div className={layoutStyles.sideLinks}><Link href="/our-mission">Our mission</Link><TutorialLink /><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy</Link></div>
     </nav>
     <div className={`${layoutStyles.layout} ${!ready || user ? layoutStyles.memberLayout : ""}`}>
       {ready && !user && <aside className={layoutStyles.sidebar} id="account">
@@ -324,8 +360,16 @@ export default function Community({ postId, discovery }: { postId?: string; disc
             {drafts.length > 0 && <button type="button" className={composerStyles.addMore} disabled={busy || drafts.length >= 10} onClick={() => fileRef.current?.click()}>{drafts.length >= 10 ? "10 photo limit reached" : "+ Add more photos"}</button>}
           </div>
         </form></dialog>}
-        {!postId && <VoteLeaders />}
+        {!mobileNavigation && !postId && <VoteLeaders />}
         {user && !postId && <MySchlawgs key={user.id} />}
+        {mobileNavigation && !postId && feed === "mine" && (
+          <nav className={layoutStyles.feedLinks} aria-label="Community information">
+            <Link href="/our-mission">Our mission</Link>
+            <TutorialLink />
+            <Link href="/faq">FAQ</Link>
+            <Link href="/privacy">Privacy</Link>
+          </nav>
+        )}
         <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations" }[discovery] : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
         {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
         {!postId && ready && !feedLoading && !feedError && photos.length > 0 && (feed === "latest" || user) && <FeedEnding key={`${user?.id ?? "guest"}-${feed}`} />}

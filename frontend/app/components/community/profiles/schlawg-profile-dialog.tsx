@@ -7,7 +7,7 @@ import styles from "./schlawg-profile-dialog.module.css";
 import sharedStyles from "../community.module.css";
 import { useAccount } from "../../../contexts/account-context";
 
-export type SchlawgProfile = { id: string; name: string; animalType: string; breed: string; profilePhotoUrl: string | null };
+export type SchlawgProfile = { id: string; name: string; animalType: string; breed: string; funFact: string; profilePhotoUrl: string | null };
 
 export default function SchlawgProfileDialog({ animal, onClose }: { animal: SchlawgProfile; onClose: () => void }) {
   const { user, ready, voteBusy, voteForAnimal } = useAccount();
@@ -67,6 +67,7 @@ export default function SchlawgProfileDialog({ animal, onClose }: { animal: Schl
         <dl className={styles.schlawgDetails}>
           <div><dt>Type</dt><dd>{animal.animalType}</dd></div>
           <div><dt>Breed</dt><dd>{animal.breed || "Not specified"}</dd></div>
+          <div className={styles.funFact}><dt>Fun fact</dt><dd>{animal.funFact?.trim() || "Not specified"}</dd></div>
         </dl>
       </div>
     </dialog>, document.body);

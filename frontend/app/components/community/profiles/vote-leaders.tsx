@@ -10,7 +10,7 @@ import { useAccount } from "../../../contexts/account-context";
 
 type Summary = { updatedAt: string | null; leaders: (SchlawgProfile & { votes: number })[] };
 
-export default function VoteLeaders() {
+export default function VoteLeaders({ compact = false }: { compact?: boolean }) {
   const { user } = useAccount();
   const heading = useId();
   const [refreshing, setRefreshing] = useState(false);
@@ -30,6 +30,31 @@ export default function VoteLeaders() {
       setNotice("Vote totals refreshed.");
     } catch (error) { setRefreshError((error as Error).message); }
     finally { setRefreshing(false); }
+  }
+  if (compact) {
+    const leaders = data?.updatedAt ? data.leaders.slice(0, 3) : [];
+    return <section className={styles.compactSummary} aria-labelledby={heading}>
+      <h2 id={heading}>Schlawg of the Week</h2>
+      {isPending ? <span className={styles.compactStatus} role="status">Loading…</span> : !data ? <button className={styles.retry} onClick={() => void refetch()}>Try again</button> : leaders.length ? <ol className={styles.podium} aria-label="Top three schlawgs by votes">
+        {["1st", "2nd", "3rd"].map((rank, index) => {
+          const animal = leaders[index];
+          return <li key={rank} className={styles.podiumPlace} data-place={index + 1}>
+            <strong className={styles.rank}>{rank}</strong>
+            {animal ? (
+              <button type="button" className={`${styles.profile} ${styles.compactProfile}`} aria-haspopup="dialog" aria-label={`View ${animal.name}, ${rank} place, ${animal.votes} ${animal.votes === 1 ? "vote" : "votes"}`} onClick={() => setSelected(animal)}>
+                <span className={styles.crownedAvatar}>
+                  {index === 0 && <span className={styles.crown} aria-hidden="true">👑</span>}
+                  {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
+                </span>
+                <span className={styles.name}>{animal.name}</span>
+                <span className={styles.podiumVotes}>{animal.votes.toLocaleString()} {animal.votes === 1 ? "vote" : "votes"}</span>
+              </button>
+            ) : <span className={styles.compactStatus}>Awaiting votes</span>}
+          </li>;
+        })}
+      </ol> : <span className={styles.compactStatus}>{data.updatedAt ? "No votes yet" : "Counting votes…"}</span>}
+      {selected && <SchlawgProfileDialog animal={selected} onClose={() => setSelected(null)} />}
+    </section>;
   }
   return <section className={styles.summary} aria-labelledby={heading}>
     <header className={styles.header}><h2 id={heading}>Schlawg of the Week</h2><p>Top votes · updated hourly</p></header>

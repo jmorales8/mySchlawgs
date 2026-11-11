@@ -157,7 +157,7 @@ public static class PhotoEndpoints
         return profile ? Results.Ok(AccountEndpoints.UserResponse(user)) : Results.Created("/api/photos", photos.Select(photo => PhotoResponse.FromPhoto(photo) with {
             AnimalProfiles = photo.AnimalProfiles.Select(tag => animalsById[tag.AnimalProfileId])
                 .OrderBy(selected => selected.Name).ThenBy(selected => selected.Id)
-                .Select(selected => new AnimalProfileSummary(selected.Id, selected.Name, selected.AnimalType, selected.Breed, selected.ProfilePhotoUrl)).ToArray()
+                .Select(selected => new AnimalProfileSummary(selected.Id, selected.Name, selected.AnimalType, selected.Breed, selected.ProfilePhotoUrl, selected.FunFact)).ToArray()
         }));
     }
 
@@ -187,7 +187,7 @@ public static class PhotoEndpoints
                 db.AnimalProfiles.Where(animal => x.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
                     .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
                     .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
-                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}")).ToArray()))
+                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}", animal.FunFact)).ToArray()))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(photos);

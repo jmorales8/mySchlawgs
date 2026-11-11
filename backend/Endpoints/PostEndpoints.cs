@@ -61,7 +61,7 @@ public static class PostEndpoints
                 db.AnimalProfiles.Where(animal => p.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
                     .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
                     .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
-                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}")).ToArray()))
+                        animal.ProfilePhotoId == null ? null : $"/api/photos/{animal.ProfilePhotoId}", animal.FunFact)).ToArray()))
                 .ToListAsync(ct);
             return Results.Ok(photos);
         });

@@ -2,7 +2,7 @@ using Backend.Models;
 
 namespace Backend.Dtos;
 
-public sealed record AnimalProfileSummary(Guid Id, string Name, string AnimalType, string Breed, string? ProfilePhotoUrl);
+public sealed record AnimalProfileSummary(Guid Id, string Name, string AnimalType, string Breed, string? ProfilePhotoUrl, string FunFact);
 
 public sealed record PhotoResponse(
     Guid Id,

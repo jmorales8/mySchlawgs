@@ -7,6 +7,7 @@
 .nav .brand { display: flex; flex-shrink: 0; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; letter-spacing: -.6px; }
 .brand > span:not(.brandText) { display: grid; place-items: center; border-radius: 45%; width: 34px; height: 34px; background: var(--accent); color: var(--background); font: 24px Georgia, serif; transform: rotate(-7deg); }
 .brandText { position: relative; display: inline-block; white-space: nowrap; }
+.curvedBrand { display: none; }
 @keyframes brandTyping { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .brand:hover .brandText { animation: brandTyping 650ms steps(9, end) both; }
@@ -108,9 +109,9 @@
   .nav.nav .feedMenu button[aria-pressed=true]:not(:disabled):hover { background: #73465f; color: #fff; }
 }
 .nav.nav .feedMenu .sharePostButton { margin-top: 12px; background: var(--accent); color: var(--on-accent); }
-.sideLinks { display: flex; flex-wrap: wrap; gap: 12px 16px; padding-top: 20px; border-top: 1px solid var(--border); }
-.sideLinks a, .sideLinks button { color: var(--muted); font-size: .8125rem; text-decoration: none; }
-.sideLinks a:hover { text-decoration: underline; }
+.feedLinks { display: flex; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 16px; }
+.feedLinks a, .feedLinks button { color: var(--muted); font-size: .8125rem; text-decoration: none; }
+.feedLinks a:hover { text-decoration: underline; }
 .profileSummary { display: none; }
 @media (min-width: 761px) {
   .nav .brandGroup { display: flex; flex-direction: column; align-items: stretch; }
@@ -123,13 +124,13 @@
   .nav .accountDropdown { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 100%; max-width: none; margin: 0; box-shadow: 0 12px 32px #402d3e26; }
 }
 @media (max-width: 760px) { .nav .brandGroup { flex-wrap: wrap; }
-  .feedFrame { grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 16px; margin-bottom: 40px; }
-  .feedFrame > .nav { position: static; padding: 0 0 20px; gap: 16px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .feedFrame { grid-template-columns: minmax(0, 1fr); gap: 5px; margin-top: 2px; margin-bottom: 40px; }
+  .feedFrame > .nav { position: static; padding: 0 0 20px; gap: 16px; border-right: 0; }
   .nav .brandGroup { flex-wrap: wrap; }
   .nav .feedMenu { flex-direction: row; flex-wrap: wrap; gap: 6px; }
   .nav.nav .feedMenu button { width: auto; padding: 10px 12px; }
   .nav.nav .feedMenu .sharePostButton { margin-top: 0; }
-  .nav .sideLinks { display: flex; padding-top: 12px; } }
+}
 .feedFrame > .nav > * { flex-shrink: 0; min-width: 0; }
 .nav .accountMenu { width: 100%; }
 .nav .accountDropdown { position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: 100%; max-width: none; margin: 0; box-shadow: 0 12px 32px #402d3e26; }
@@ -139,3 +140,92 @@
 .nav .profileSummary { display: block; min-width: 0; overflow-wrap: anywhere; }
 
 .accountDropdown.accountDropdown > :is(a, button, label):first-child { border-radius: 11px 11px 0 0; }
+.mobileFeedLabel, .mobileAccountName, .nav .mobilePostButton { display: none; }
+.bottomNavigation { display: contents; }
+
+@media (max-width: 760px) {
+  .nav .brand { font-size: clamp(1.125rem, 5.6vw, 1.5rem); }
+  .nav .accountMenu { flex: 0 0 48px; width: 48px; }
+  .nav .accountTrigger { justify-content: center; width: 48px; height: 48px; min-height: 48px; border-radius: 50%; }
+  .nav .accountTrigger .avatar { width: 44px; height: 44px; font-size: 1.25rem; }
+  .nav .accountTrigger .profileSummary, .nav .hamburger { display: none; }
+  .nav .accountDropdown { left: auto; right: 0; width: min(290px, calc(100vw - 32px)); max-width: none; }
+  .nav .mobileAccountName { display: block; padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--foreground); font-weight: 600; overflow-wrap: anywhere; }
+  .desktopFeedLabel { display: none; }
+  .mobileFeedLabel { display: inline; }
+  .nav .feedMenu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--border); }
+  .nav.nav .feedMenu button { width: 100%; min-height: 46px; padding: 10px 4px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; text-align: center; }
+  .nav.nav .feedMenu button[aria-pressed=true] { background: transparent; color: var(--link); border-bottom-color: var(--accent); }
+  .nav.nav .feedMenu button:hover:not(:disabled) { background: var(--soft); color: var(--link); }
+  .nav.nav .feedMenu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .nav.nav .feedMenu .sharePostButton { display: none; }
+}
+
+@media (max-width: 760px) {
+  .feedFrame > .nav:has(.curvedBrand) { position: relative; }
+  .nav .mobilePostButton {
+    position: absolute;
+    inset: -10px 0 auto auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 4px 6px;
+    font-size: .75rem;
+    white-space: nowrap;
+  }
+  .nav .brandGroup:has(.curvedBrand) {
+    position: absolute;
+    inset: -20px auto auto 0;
+    width: min(124px, calc(50% - 69px));
+    min-height: 0;
+  }
+  .nav .brand:has(.curvedBrand) { width: 100%; }
+  .nav .brand:has(.curvedBrand) .brandText { display: none; }
+  .curvedBrand {
+    display: block;
+    width: 100%;
+    height: auto;
+    fill: currentColor;
+    font: 800 24px/1 var(--font-geist-sans), Arial, sans-serif;
+    letter-spacing: -.8px;
+  }
+  .feedFrame:has(.bottomNavigation[data-active="true"]) {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+  .bottomNavigation[data-active="true"] {
+    position: fixed;
+    z-index: 30;
+    inset: auto 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 64px;
+    padding: 6px var(--page-gutter) calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    box-shadow: 0 -4px 20px #0002;
+  }
+  .nav .bottomNavigation .feedMenu { flex: 1; min-width: 0; border-bottom: 0; }
+  .nav.nav .bottomNavigation .feedMenu button { border-top: 2px solid transparent; }
+  .nav.nav .bottomNavigation .feedMenu button[aria-pressed=true] {
+    border-bottom-color: transparent;
+    border-top: 2px solid var(--accent);
+    background: var(--soft);
+  }
+  .nav .bottomNavigation .accountDropdown {
+    top: auto;
+    bottom: calc(100% + 10px);
+    max-height: min(65dvh, 440px);
+    overflow-y: auto;
+    transform-origin: bottom right;
+    animation: bottomMenuIn 160ms ease-out both;
+  }
+  .nav .bottomNavigation .accountDropdownClosing { animation: bottomMenuOut 160ms ease-in both; }
+}
+@keyframes bottomMenuIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bottomMenuOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) {
+  .nav .bottomNavigation .accountDropdown { animation: none; }
+}

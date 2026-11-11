@@ -12,7 +12,7 @@ const choices = [
   { value: "relevant", title: "Relevant", description: "Someone commented in the past 7 days" },
 ] as const;
 
-export default function RandomPost({ postId, ready, initialCategory = "popular" }: { postId?: string; ready: boolean; initialCategory?: "popular" | "niche" | "relevant" }) {
+export default function RandomPost({ postId, ready, initialCategory = "popular", collapsible }: { postId?: string; ready: boolean; initialCategory?: "popular" | "niche" | "relevant"; collapsible: boolean }) {
   const router = useRouter();
   const [category, setCategory] = useState<string>(initialCategory);
   const [busy, setBusy] = useState(false);
@@ -53,19 +53,23 @@ export default function RandomPost({ postId, ready, initialCategory = "popular" 
 
   return <section ref={discoveryRef} className={styles.discovery} aria-label="Discover a random post">
     <button ref={triggerRef} type="button" className={styles.discoveryTrigger} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
-      Feeling bored? <span aria-hidden="true">{open ? "▴" : "▾"}</span>
+      Feeling bored? <span className={styles.discoveryArrow} aria-hidden="true">▾</span>
     </button>
-    <div id={panelId} className={styles.discoveryPanel} data-open={open}>
-    <h2>Feeling bored?</h2>
-    <fieldset disabled={busy || !ready}>
-      <legend className={sharedStyles.srOnly}>What are you in the mood for?</legend>
-      {choices.map(choice => <label key={choice.value} className={styles.discoveryChoice} title={choice.description}>
-        <input type="radio" name={`discovery-${postId ?? "feed"}`} value={choice.value} checked={category === choice.value} onChange={() => { setCategory(choice.value); setError(""); }} />
-        <span><strong>{choice.title}</strong><small className={sharedStyles.srOnly}>{choice.description}</small></span>
-      </label>)}
-    </fieldset>
-    <button type="button" disabled={busy || !ready} onClick={() => void discover()}>{busy ? "Finding a schlawg…" : "Surprise me ↗"}</button>
-    {error && <p className={styles.discoveryError} role="status">{error}</p>}
+    <div id={panelId} className={styles.discoveryReveal} data-open={open} inert={collapsible && !open}>
+      <div className={styles.discoveryClip}>
+        <div className={styles.discoveryPanel}>
+          <h2>Feeling bored?</h2>
+          <fieldset disabled={busy || !ready}>
+            <legend className={sharedStyles.srOnly}>What are you in the mood for?</legend>
+            {choices.map(choice => <label key={choice.value} className={styles.discoveryChoice} title={choice.description}>
+              <input type="radio" name={`discovery-${postId ?? "feed"}`} value={choice.value} checked={category === choice.value} onChange={() => { setCategory(choice.value); setError(""); }} />
+              <span><strong>{choice.title}</strong><small className={sharedStyles.srOnly}>{choice.description}</small></span>
+            </label>)}
+          </fieldset>
+          <button type="button" disabled={busy || !ready} onClick={() => void discover()}>{busy ? "Finding a schlawg…" : "Surprise me ↗"}</button>
+          {error && <p className={styles.discoveryError} role="status">{error}</p>}
+        </div>
+      </div>
     </div>
   </section>;
 }

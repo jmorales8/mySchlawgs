@@ -24,10 +24,10 @@ public static class VoteSnapshotEndpoints
             var totals = snapshot is null ? [] : JsonSerializer.Deserialize<List<AnimalVoteTotal>>(snapshot.TotalsJson) ?? [];
             var ids = totals.Select(x => x.AnimalId).ToArray();
             var animals = await db.AnimalProfiles.AsNoTracking().Where(x => ids.Contains(x.Id))
-                .Select(x => new { x.Id, x.Name, x.AnimalType, x.Breed, x.ProfilePhotoId }).ToDictionaryAsync(x => x.Id, ct);
+                .Select(x => new { x.Id, x.Name, x.AnimalType, x.Breed, x.FunFact, x.ProfilePhotoId }).ToDictionaryAsync(x => x.Id, ct);
             var leaders = totals.Where(x => animals.ContainsKey(x.AnimalId)).OrderByDescending(x => x.Votes)
                 .ThenBy(x => animals[x.AnimalId].Name).ThenBy(x => x.AnimalId).Take(5)
-                .Select(x => new { id = x.AnimalId, animals[x.AnimalId].Name, animals[x.AnimalId].AnimalType, animals[x.AnimalId].Breed,
+                .Select(x => new { id = x.AnimalId, animals[x.AnimalId].Name, animals[x.AnimalId].AnimalType, animals[x.AnimalId].Breed, animals[x.AnimalId].FunFact,
                     profilePhotoUrl = animals[x.AnimalId].ProfilePhotoId is Guid photoId ? $"/api/photos/{photoId}" : null, x.Votes }).ToArray();
             return Results.Ok(new { updatedAt = snapshot?.UpdatedAt, leaders });
         });

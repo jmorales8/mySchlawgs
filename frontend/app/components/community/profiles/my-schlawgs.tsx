@@ -9,7 +9,7 @@ import styles from "./my-schlawgs.module.css";
 import sharedStyles from "../community.module.css";
 import SchlawgProfileDialog from "./schlawg-profile-dialog";
 
-type Animal = { id: string; name: string; animalType: string; breed: string; profilePhotoUrl: string | null };
+type Animal = { id: string; name: string; animalType: string; breed: string; funFact: string; profilePhotoUrl: string | null };
 const gardenAnimals = ["🐶", "🐱", "🐰", "🐹", "🐭", "🐦", "🐠", "🐢", "🦎", "🐸", "🐴", "🐮", "🐷", "🐥", "🦊", "🦉", "🦦", "🦔", "🦜", "🦋", "🐌"];
 
 function randomGardenAnimals() {

@@ -1,6 +1,7 @@
 /* Component-specific styles. Composed classes retain the shared control styling. */
 .discovery { position: relative; flex: 0 0 auto; width: 640px; max-width: 100%; min-width: 0; margin-left: auto; z-index: 6; }
 .discoveryPanel { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.discoveryReveal, .discoveryClip { display: contents; }
 .discoveryPanel > button { flex: 0 0 160px; width: 160px; }
 .discoveryTrigger.discoveryTrigger { display: none; }
 .discoveryTrigger:focus-visible, .discoveryPanel button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
@@ -26,7 +27,6 @@
   .discovery { width: auto; }
   .discoveryTrigger.discoveryTrigger { display: flex; align-items: center; gap: 8px; min-height: 44px; white-space: nowrap; }
   .discoveryPanel { display: none; position: absolute; top: calc(100% + 6px); right: 0; width: 300px; max-width: calc(100vw - 32px); padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px #402d3e26; }
-  .discoveryPanel[data-open=true] { display: flex; flex-direction: column; align-items: stretch; }
   .discoveryPanel.discoveryPanel h2 { font-size: 24px; }
   .discoveryPanel fieldset { flex-direction: column; gap: 8px; }
   .discoveryChoice.discoveryChoice { min-height: 44px; }
@@ -35,13 +35,56 @@
 }
 .discovery.discovery { width: 100%; margin: 0; z-index: auto; }
 .discovery.discovery .discoveryTrigger { display: none; }
-.discovery .discoveryPanel, .discovery .discoveryPanel[data-open=true] { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+.discovery .discoveryPanel { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
 .discovery.discovery .discoveryPanel h2 { font: 600 1rem/1.5 var(--font-geist-sans), Arial, sans-serif; letter-spacing: 0; }
 .discovery .discoveryPanel fieldset { display: flex; flex-direction: column; gap: 6px; }
 .discovery .discoveryPanel > button { flex: none; width: 100%; }
 .discovery .discoveryError { text-align: left; }
 @media (max-width: 760px) {
-  .discovery.discovery .discoveryTrigger { display: flex; width: 100%; justify-content: space-between; }
-  .discovery .discoveryPanel { display: none; }
-  .discovery .discoveryPanel[data-open=true] { display: flex; padding-top: 16px; border-top: 0; }
+  .discovery.discovery { position: static; width: auto; }
+  .discovery.discovery .discoveryTrigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    max-width: 105px;
+    padding: 4px 8px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--link);
+    font-size: .8125rem;
+    line-height: 1.25;
+    white-space: normal;
+  }
+  .discovery.discovery .discoveryTrigger[aria-expanded=true],
+  .discovery.discovery .discoveryTrigger:hover { background: var(--soft); }
+  .discoveryReveal {
+    position: absolute;
+    inset: auto var(--page-gutter) calc(100% + 8px);
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition: grid-template-rows 220ms ease, visibility 0s linear 220ms;
+  }
+  .discoveryReveal[data-open=true] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+  .discoveryClip { display: block; min-height: 0; overflow: hidden; }
+  .discovery .discoveryPanel {
+    max-height: 65dvh;
+    overflow-y: auto;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+  }
+  .discoveryArrow { transform: rotate(180deg); transition: transform 220ms ease; }
+  .discoveryTrigger[aria-expanded=true] .discoveryArrow { transform: rotate(0deg); }
+  .discovery .discoveryChoice:focus-within,
+  .discovery .discoveryPanel button:focus-visible { outline-offset: -3px; }
+  @media (prefers-reduced-motion: reduce) {
+    .discoveryReveal, .discoveryArrow { transition: none; }
+  }
 }

@@ -56,6 +56,24 @@
 .schlawgsActions { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; font-size: .8125rem; }
 .schlawgsActions > div { display: flex; gap: 12px; align-items: center; }
 .schlawgsActions.schlawgsActions button { min-width: 40px; min-height: 40px; padding: 8px; background: transparent; color: var(--link); border-color: var(--control-border); }
-@media (max-width: 480px) { .schlawgsList { height: 152px; } .schlawgsList img { width: 48px; } .schlawgsList li > :is(a, button) { font-size: .75rem; } .mySchlawgs { margin-bottom: 24px; } }
+@media (max-width: 480px) { .schlawgsList img { width: 48px; } .schlawgsList li > :is(a, button) { font-size: .75rem; } .mySchlawgs { margin-bottom: 24px; } }
+@media (max-width: 760px) {
+  .schlawgsList { height: 90px; }
+  .schlawgsList li:nth-child(n) > :is(a, button) {
+    top: 50%;
+    width: min(100%, 84px, max(44px, 78%));
+    animation-name: schlawgPace;
+    animation-duration: 3s;
+    animation-direction: alternate;
+  }
+  .schlawgsList :is(a, button):hover > :is(img, .schlawgInitial),
+  .schlawgsList li:focus-within > :is(a, button):focus-visible > :is(img, .schlawgInitial) {
+    animation: none;
+  }
+}
+@keyframes schlawgPace {
+  from { left: max(0%, calc(50% - 56px)); transform: translate(0, -50%); }
+  to { left: min(100%, calc(50% + 56px)); transform: translate(-100%, -50%); }
+}
 @media (prefers-reduced-motion: reduce) { .schlawgsList li > :is(a, button) { animation: none !important; top: 50%; left: 50%; transform: translate(-50%, -50%); } .schlawgsList :is(a, button) > :is(img, .schlawgInitial) { animation: none !important; } }
 .schlawgTrigger {}

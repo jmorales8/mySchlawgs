@@ -1,4 +1,24 @@
 .summary { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.compactSummary { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 14px; }
+.podium { --gold: #895b00; --silver: #626a78; --bronze: #94562f; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; width: 100%; margin: 0; padding: 0; list-style: none; }
+:global([data-theme="dark"]) .podium { --gold: #f4ce67; --silver: #d2d8e2; --bronze: #e3ad82; }
+.podiumPlace { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; text-align: center; }
+.podiumPlace[data-place="1"] { grid-column: 1 / -1; }
+.rank { font-size: 1.125rem; font-weight: 800; line-height: 1.3; }
+.podiumPlace[data-place="1"] .rank { color: var(--gold); text-shadow: 0 0 8px #e5b33770, 0 2px 14px #e5b33740; }
+.podiumPlace[data-place="2"] .rank { color: var(--silver); }
+.podiumPlace[data-place="3"] .rank { color: var(--bronze); }
+.podiumVotes { color: var(--muted); font-size: .8125rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.podiumPlace:not([data-place="1"]) .compactProfile { padding-top: 0; }
+.podiumPlace .compactStatus { min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.compactSummary h2 { min-width: 0; margin: 0; text-align: center; font: 600 .875rem/1.4 var(--font-geist-sans), Arial, sans-serif; }
+.compactSummary .compactProfile { justify-content: center; gap: 10px; min-width: 44px; max-width: 100%; padding: 14px 0 0; border: 0; border-radius: 0; background: transparent; color: var(--foreground); text-align: left; font-size: .875rem; }
+.compactProfile .name { min-width: 0; overflow-wrap: anywhere; }
+.compactProfile img, .compactProfile .initial { width: 40px; height: 40px; }
+.crownedAvatar { position: relative; display: flex; flex: 0 0 40px; }
+.crown { position: absolute; left: calc(50% - 2.5px); top: -15px; transform: translateX(-50%); font-size: 20px; line-height: 1; pointer-events: none; }
+.compactStatus { color: var(--muted); font-size: .8125rem; text-align: right; }
+.compactSummary button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 .header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
 .header h2 { margin: 0; font: 400 clamp(1.25rem, 3vw, 1.5rem)/1.3 Georgia, serif; }
 .header p, .muted, .updated { color: var(--muted); font-size: .8125rem; line-height: 1.6; }
