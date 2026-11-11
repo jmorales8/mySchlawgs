@@ -139,9 +139,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
       {userId ? <CommentComposer label={photoCount > 1 ? `Comment on photo ${slideNumber}` : "Write a comment :3"} textareaRef={commentRef} value={body} onChange={setBody} busy={busy}
         onSubmit={async event => { event.preventDefault(); if (busy || !body.trim()) return; setBusy(true); setError(""); setNotice(""); try { await api(`${url}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, photoId, parentCommentId: null }) }); setBody(""); await reload(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }} />
         : <p className={styles.message}><a href="#account">Log in or create an account</a> to join the conversation. Everyone can read along.</p>}
-      <h3>Conversation</h3>
-      {activity?.comments.length === 0 && <p className={styles.message}>No comments yet. Say something kind.</p>}
-      {ordered.map(({ comment, depth }) => <article key={comment.id} className={`${styles.comment} ${depth ? styles.reply : ""} ${replyTo?.id === comment.id || editingId === comment.id ? styles.replyTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
+      {ordered.map(({ comment, depth }) => <article key={comment.id} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
         {comment.isReply && <small className={styles.replyContext}>{comment.parentCommentId ? `↳ Reply to @${comments.find(parent => parent.id === comment.parentCommentId)?.username ?? "comment"}` : "↳ Original comment removed"}</small>}
         <div className={styles.commentHeader}><strong>@{comment.username}</strong><time dateTime={comment.createdAt} title={new Date(comment.createdAt).toLocaleString()}>{new Date(comment.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
