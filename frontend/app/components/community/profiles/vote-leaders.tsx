@@ -37,23 +37,38 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
     } catch (error) { setRefreshError((error as Error).message); }
     finally { setRefreshing(false); }
   }
-  const podium = <ol className={styles.podium} aria-label="Top three schlawgs by votes">
-        {["1st", "2nd", "3rd"].map((rank, index) => {
-          const animal = data?.leaders[index];
-          return <li key={rank} className={styles.podiumPlace} data-place={index + 1}>
-            <strong className={styles.rank}>{rank}</strong>
-            {animal ? (
-              <button type="button" className={`${styles.profile} ${styles.podiumProfile}`} aria-haspopup="dialog" aria-label={`View ${animal.name}, ${rank} place, ${animal.votes} ${animal.votes === 1 ? "vote" : "votes"}`} onClick={() => setSelected(animal)}>
-                <span className={styles.crownedAvatar}>
-                  {index === 0 && <span className={styles.crown} aria-hidden="true">👑</span>}
-                  {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
-                </span>
-                <span className={styles.name}><HoverLetters text={animal.name} /></span>
-                <span className={styles.podiumVotes}>{animal.votes.toLocaleString()} {animal.votes === 1 ? "vote" : "votes"}</span>
-              </button>
-            ) : <span className={styles.compactStatus}>Awaiting votes</span>}
-          </li>;
-        })}
+  const leaders = data?.leaders ?? [];
+  const podiumCutoff = leaders[2]?.votes;
+  const podiumLeaders = leaders.filter(animal => podiumCutoff === undefined || animal.votes >= podiumCutoff);
+  const places = new Map<number, Summary["leaders"]>();
+  for (const animal of podiumLeaders) {
+    const group = places.get(animal.votes);
+    if (group) group.push(animal);
+    else places.set(animal.votes, [animal]);
+  }
+  const podiumGroups = [...places.values()];
+  // Keep vacant slots when the available ranks are all untied.
+  if (podiumGroups.length === podiumLeaders.length) {
+    while (podiumGroups.length < 3) podiumGroups.push([]);
+  }
+
+  const podium = <ol className={styles.podium} data-places={podiumGroups.length} aria-label="Schlawg of the Week podium">
+    {podiumGroups.map((animals, index) => {
+      const rank = ["1st", "2nd", "3rd"][index];
+      return <li key={rank} className={styles.podiumPlace} data-place={index + 1}>
+        <strong className={styles.rank}>{rank}</strong>
+        {animals.length ? <div className={styles.podiumProfiles}>
+          {animals.map(animal => <button key={animal.id} type="button" className={`${styles.profile} ${styles.podiumProfile}`} aria-haspopup="dialog" aria-label={`View ${animal.name}, ${rank} place, ${animal.votes} ${animal.votes === 1 ? "vote" : "votes"}`} onClick={() => setSelected(animal)}>
+            <span className={styles.crownedAvatar}>
+              {index === 0 && <span className={styles.crown} aria-hidden="true">👑</span>}
+              {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
+            </span>
+            <span className={styles.name}><HoverLetters text={animal.name} /></span>
+            <span className={styles.podiumVotes}>{animal.votes.toLocaleString()} {animal.votes === 1 ? "vote" : "votes"}</span>
+          </button>)}
+        </div> : <span className={styles.compactStatus}>Awaiting votes</span>}
+      </li>;
+    })}
   </ol>;
   if (compact) {
     return <section className={styles.compactSummary} aria-labelledby={heading}>
@@ -78,7 +93,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
     {isPending ? <p role="status" className={styles.muted}>Gathering the latest totals…</p> : !data ? <p role="alert" className={styles.muted}>Couldn’t load vote totals. <button type="button" className={styles.retry} onClick={() => void refetch()}>Try again</button></p> : <>
       {!data.updatedAt ? <p className={styles.muted}>The first vote count is on its way.</p> : !data.leaders.length ? <p className={styles.muted}>No votes in the latest count. Open a schlawg’s profile to choose your favorite.</p> : <>
         {podium}
-        {data.leaders.length > 3 && <ul className={styles.leaders} aria-label="Other vote leaders">{data.leaders.slice(3).map(animal => <li key={animal.id}><button type="button" className={styles.profile} aria-haspopup="dialog" aria-label={animal.name} onClick={() => setSelected(animal)}>
+        {leaders.length > podiumLeaders.length && <ul className={styles.leaders} aria-label="Other vote leaders">{leaders.slice(podiumLeaders.length).map(animal => <li key={animal.id}><button type="button" className={styles.profile} aria-haspopup="dialog" aria-label={animal.name} onClick={() => setSelected(animal)}>
         {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={36} height={36} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
         <span className={styles.name}><HoverLetters text={animal.name} /></span></button><span className={styles.count}>{animal.votes.toLocaleString()} {animal.votes === 1 ? "vote" : "votes"}</span></li>)}</ul>}
       </>}
