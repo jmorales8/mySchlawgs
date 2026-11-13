@@ -1,10 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { api } from "../../api";
 import styles from "../social/post-social.module.css";
 import { useAccount } from "../../../contexts/account-context";
 
-export default function PostModeration({ postId, userId, canModerate, reported, onRemoved }: { postId: string; userId: string | null; canModerate: boolean; reported: boolean; onRemoved: () => Promise<void> }) {
+export default function PostModeration({ postId, userId, canReport = true, canModerate, reported, onRemoved, children }: { postId: string; userId: string | null; canReport?: boolean; canModerate: boolean; reported: boolean; onRemoved: () => Promise<void>; children?: ReactNode }) {
   const [mode, setMode] = useState<"report" | "remove" | null>(null);
   const [reason, setReason] = useState("spam");
   const [details, setDetails] = useState("");
@@ -20,8 +20,15 @@ export default function PostModeration({ postId, userId, canModerate, reported, 
       await onRemoved();
     } catch (e) { setMessage((e as Error).message); } finally { setBusy(false); }
   }
-  return <div className={styles.moderation}>
-    <button type="button" className={styles.plain} disabled={busy || sent || reported} onClick={() => { setMode(mode === "report" ? null : "report"); setMessage(""); }}>{sent || reported ? "Report submitted" : "Report post"}</button>
+  const reportButton = canReport && <button type="button" className={styles.plain} aria-expanded={mode === "report"} disabled={busy || sent || reported} onClick={() => { setMode(mode === "report" ? null : "report"); setMessage(""); }}>{sent || reported ? "Report submitted" : "Report post"}</button>;
+
+  return <>
+    {children && <div className={styles.actions}>
+      {children}
+      {canReport && <div className={styles.reportAction}>{reportButton}</div>}
+    </div>}
+    {canReport && (!children || canModerate || mode || message) && <div className={styles.moderation}>
+    {!children && reportButton}
     {canModerate && (user?.isAdmin ? <button type="button" className={styles.plain} disabled={busy} onClick={() => void removePost()}>{busy ? "Removing…" : "Remove post · Admin"}</button> : <button type="button" className={styles.plain} disabled={busy} onClick={() => { setMode("remove"); setDetails(""); setMessage(""); }}>Remove post · Moderator</button>)}
     {mode && (!userId ? <p><a href="#account">Log in or sign up</a> to report this post. Each account can report a post once.</p> : <form onSubmit={async event => {
       event.preventDefault(); if (busy) return; setBusy(true); setMessage("");
@@ -44,5 +51,6 @@ export default function PostModeration({ postId, userId, canModerate, reported, 
       <button type="button" disabled={busy} className={styles.plain} onClick={() => setMode(null)}>Cancel</button>
     </form>)}
     {message && <p role="status">{message}</p>}
-  </div>;
+    </div>}
+  </>;
 }

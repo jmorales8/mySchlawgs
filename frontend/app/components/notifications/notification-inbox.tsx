@@ -24,7 +24,7 @@ export default function NotificationInbox({ onNavigate }: { onNavigate?: () => v
       {data.items.length === 0 && <p>No notifications yet. New activity will appear here.</p>}
       {data.items.map(item => <article key={item.id} className={`${styles.card} ${item.readAt ? styles.read : styles.unread}`}>
         <p>{!item.readAt && <strong>New · </strong>}{item.message}</p><time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
-        <p>{["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link onClick={onNavigate} href={`/posts/${item.postId}`}>View post</Link>}</p>
+        <p>{["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link onClick={onNavigate} href={item.commentId ? `/posts/${item.postId}?notificationComment=${item.commentId}` : `/posts/${item.postId}`}>{item.commentId ? "View comment" : "View post"}</Link>}</p>
         {!item.readAt && <button disabled={busy} onClick={() => void mark([item])}>Mark as read</button>}
       </article>)}
       <button disabled={page === 0 || busy} onClick={() => { setPage(page - 1); }}>Previous</button> <span>Page {page + 1}</span> <button disabled={data.items.length < 30 || busy} onClick={() => { setPage(page + 1); }}>Next</button>

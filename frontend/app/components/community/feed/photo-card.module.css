@@ -1,7 +1,56 @@
 /* Component-specific styles. Composed classes retain the shared control styling. */
+.authorProfileOptions { position: relative; flex: none; }
+.authorProfileOptions > .authorProfileTrigger {
+  display: grid;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.authorProfileDrawer {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: -6px;
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 160ms ease-in, visibility 160ms;
+}
+.authorProfileDrawer[data-open=true] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition: grid-template-rows 220ms cubic-bezier(.16, 1, .3, 1), visibility 220ms;
+}
+.authorProfileDrawerBody { min-height: 0; overflow: clip; display: flow-root; }
+.authorProfileDrawerBody > button:disabled {
+  display: block;
+  margin: 6px;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--muted);
+  white-space: nowrap;
+  box-shadow: 0 2px 5px #0002;
+}
+@media (prefers-reduced-motion: reduce) {
+  .authorProfileDrawer, .authorProfileDrawer[data-open=true] { transition: none; }
+}
+.postReveal {
+  --schlawg-avatar-size: 44px;
+  --schlawg-avatar-padding: 2.5px;
+  --schlawg-avatar-border: 3px;
+  animation: postFadeIn 350ms ease-out;
+}
+.postReveal > header {
+  box-sizing: content-box;
+  min-block-size: calc(var(--schlawg-avatar-size) + 2 * (var(--schlawg-avatar-padding) + var(--schlawg-avatar-border)));
+}
 .postSchlawgs { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 50%; margin: 0 0 0 auto; padding: 0; list-style: none; }
-.postSchlawgs li { display: flex; flex: 0 0 auto; padding: 2.5px; border: 3px solid #1372c5; border-radius: 50%; background: var(--surface); }
-.postSchlawgs.postSchlawgs button { display: grid; place-items: center; box-sizing: border-box; width: 44px; height: 44px; aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 50%; background: var(--selected); color: var(--link); }
+.postSchlawgs li { display: flex; flex: 0 0 auto; padding: var(--schlawg-avatar-padding); border: var(--schlawg-avatar-border) solid #1372c5; border-radius: 50%; background: var(--surface); }
+.postSchlawgs.postSchlawgs button { display: grid; place-items: center; box-sizing: border-box; width: var(--schlawg-avatar-size); height: var(--schlawg-avatar-size); aspect-ratio: 1 / 1; padding: 0; overflow: hidden; border: 0; border-radius: 50%; background: var(--selected); color: var(--link); }
 .postSchlawgs button > img { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; aspect-ratio: 1 / 1; border-radius: 50%; object-fit: cover; object-position: 50% 50%; }
 .postSchlawgs button > span { display: grid; place-items: center; width: 100%; height: 100%; line-height: 1; text-align: center; }
 .postSchlawgs.postSchlawgs button:hover { background: var(--soft); border-color: var(--accent); }
@@ -34,7 +83,6 @@
 @media (prefers-reduced-motion: reduce) { .carouselArrow.carouselArrow { transition: none; } }
 .slideCount { position: absolute; top: 14px; right: 14px; background: #402d3ee6; color: white; padding: 6px 11px; border-radius: 20px; font-size: .8125rem; pointer-events: none; }
 .carousel:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
-.postReveal { animation: postFadeIn 350ms ease-out; }
 @keyframes postFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .postReveal { animation: none; }

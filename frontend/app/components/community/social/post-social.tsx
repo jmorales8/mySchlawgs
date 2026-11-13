@@ -20,7 +20,7 @@ type Reaction = { userId: string; username: string; kind: Kind };
 type Comment = { id: string; authorId: string; username: string; body: string; createdAt: string; canDelete: boolean; canEdit: boolean; photoId: string | null; slideNumber: number | null; parentCommentId: string | null; isReply: boolean; likeCount: number; likedByMe: boolean; likedByPostAuthor: boolean; reactionCounts: ReactionCount[]; myReaction: Kind | null; postAuthorReaction: Kind | null };
 type Activity = { reactions: Reaction[]; comments: Comment[]; bestQuotes: { photoId: string; commentId: string }[]; canChooseQuote: boolean; canModerate: boolean; reportedByMe: boolean };
 
-export default function PostSocial({ quoteTarget, postId, userId, photoId, slideNumber, photoCount, postAuthor, onRemoved }: { quoteTarget: HTMLDivElement | null; postId: string; userId: string | null; photoId: string; slideNumber: number; photoCount: number; postAuthor: { username: string | null; profilePhotoUrl: string | null; ownerId: string | null }; onRemoved: () => Promise<void> }) {
+export default function PostSocial({ quoteTarget, postId, userId, photoId, slideNumber, photoCount, postAuthor, onRemoved, notificationCommentId }: { notificationCommentId?: string; quoteTarget: HTMLDivElement | null; postId: string; userId: string | null; photoId: string; slideNumber: number; photoCount: number; postAuthor: { username: string | null; profilePhotoUrl: string | null; ownerId: string | null }; onRemoved: () => Promise<void> }) {
   const { user } = useAccount();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [error, setError] = useState("");
@@ -29,7 +29,11 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const [reactionBusy, setReactionBusy] = useState(false);
   const reactionSaving = useRef(false);
   const activityRequest = useRef(0);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(!!notificationCommentId);
+  const [showCommentComposer, setShowCommentComposer] = useState(false);
+  const [noticeSeen, setNoticeSeen] = useState(false);
+  const notifiedCommentRef = useRef<HTMLElement>(null);
+  const [postedNotice, setPostedNotice] = useState(0);
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
@@ -37,6 +41,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
+  const commentActionRef = useRef<HTMLButtonElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
   const replyRef = useRef<HTMLTextAreaElement>(null);
   const url = `/api/posts/${postId}`;
@@ -46,6 +51,10 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const quote = activity?.comments.find(comment => comment.id === quoteId);
   const ordered: { comment: Comment; depth: number }[] = [];
   const comments = activity?.comments ?? [];
+  const hasNotifiedComment = comments.some(comment => comment.id === notificationCommentId);
+  useEffect(() => {
+    if (hasNotifiedComment) notifiedCommentRef.current?.scrollIntoView({ block: "center" });
+  }, [hasNotifiedComment]);
   const ids = new Set(comments.map(comment => comment.id));
   const children = new Map<string, Comment[]>();
   for (const comment of comments) {
@@ -73,6 +82,12 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     return () => { active = false; };
   }, [url]);
   useEffect(() => { replyRef.current?.focus(); }, [replyTo?.id]);
+  useEffect(() => {
+    if (!postedNotice) return;
+    // Keep the toast mounted through its 240ms exit after the four-second display.
+    const timeout = window.setTimeout(() => setPostedNotice(0), 4240);
+    return () => window.clearTimeout(timeout);
+  }, [postedNotice]);
 
 
   async function reload() {
@@ -117,10 +132,20 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
       {activity?.canChooseQuote && <CommentOptions label="Best quote options"><button type="button" disabled={busy} onClick={() => void chooseQuote(null)}>Remove best quote</button></CommentOptions>}
     </figure>}
   </div>, quoteTarget)}<section className={styles.social} aria-label="Post reactions and comments">
-    <div className={styles.actions}>
+    {quoteTarget && createPortal(<div className={styles.commentToastRegion} role="status" aria-atomic="true">
+      {postedNotice > 0 && <div className={styles.commentToast} key={postedNotice}>Comment posted!</div>}
+    </div>, document.body)}
+    <PostModeration postId={postId} userId={userId} canReport={!userId || postAuthor.ownerId !== userId} canModerate={!!activity?.canModerate} reported={activity?.reportedByMe ?? false} onRemoved={onRemoved}>
       <ReactionControl count={activity?.reactions.length ?? 0} value={mine ?? null} disabled={busy || reactionBusy || !activity} signedIn={!!userId}
         onLoginRequired={() => setNotice("Log in or create an account to react.")} onChoose={react} />
-      <button type="button" className={styles.commentAction} aria-label={`${activity?.comments.length ?? 0} comments`} aria-expanded={showComments} aria-controls={`conversation-${postId}`} onClick={() => { setReplyTo(null); setShowComments(true); requestAnimationFrame(() => commentRef.current?.focus()); }}>
+      <button ref={commentActionRef} type="button" className={styles.commentAction} aria-label={`${activity?.comments.length ?? 0} comments`} aria-expanded={showComments} aria-controls={`conversation-${postId}`} onClick={() => {
+        setShowComments(!showComments);
+        if (!showComments) {
+          setReplyTo(null);
+          setShowCommentComposer(!!userId);
+          if (userId) requestAnimationFrame(() => commentRef.current?.focus({ preventScroll: true }));
+        }
+      }}>
         <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a9 9 0 1 0-4.2 7.6L22 21l-1.5-5A9 9 0 0 0 21 11.5Z" /></svg><span>{activity?.comments.length ?? 0}</span>
       </button>
       <button type="button" aria-label="Share post" title="Share post" onClick={() => void share()}>
@@ -131,16 +156,32 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           <span className={styles.reactionBadge} data-kind={choice.kind} aria-hidden="true"><span>{choice.emoji}</span></span>
         </span>)}
       </div>}
-    </div>
+    </PostModeration>
     {shareUrl && <label className={styles.shareLink}>Public post link<input readOnly value={shareUrl} onFocus={event => event.target.select()} /><Link href={`/posts/${postId}`}>Open this post</Link></label>}
     {notice && <p className={styles.message} role="status">{notice}{!userId && !shareUrl && <> <a href="#account">Log in / sign up</a></>}</p>}
     {error && <div className={styles.error} role="alert">{error} <button type="button" className={styles.plain} onClick={() => void reload()}>Retry loading</button></div>}
-    {showComments && <div className={styles.comments} id={`conversation-${postId}`}>
-      {userId ? <CommentComposer label={photoCount > 1 ? `Comment on photo ${slideNumber}` : "Write a comment :3"} textareaRef={commentRef} value={body} onChange={setBody} busy={busy}
-        onSubmit={async event => { event.preventDefault(); if (busy || !body.trim()) return; setBusy(true); setError(""); setNotice(""); try { await api(`${url}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, photoId, parentCommentId: null }) }); setBody(""); await reload(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }} />
-        : <p className={styles.message}><a href="#account">Log in or create an account</a> to join the conversation. Everyone can read along.</p>}
-      {ordered.map(({ comment, depth }) => <article key={comment.id} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
+    <div className={styles.commentDrawer} id={`conversation-${postId}`} data-open={showComments} inert={!showComments}>
+      <div className={styles.commentDrawerBody}><div className={styles.comments}>
+      {userId && showCommentComposer && <CommentComposer label={photoCount > 1 ? `Comment on photo ${slideNumber}` : "Write a comment :3"} textareaRef={commentRef} value={body} onChange={setBody} busy={busy}
+        onSubmit={async event => {
+          event.preventDefault();
+          if (busy || !body.trim()) return;
+          setBusy(true); setError(""); setNotice("");
+          try {
+            await api(`${url}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, photoId, parentCommentId: null }) });
+            setBody("");
+            setShowCommentComposer(false);
+            setPostedNotice(count => count + 1);
+            if (document.activeElement === document.body) commentActionRef.current?.focus({ preventScroll: true });
+            await reload();
+          } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+        }} />}
+      {!userId && <p className={styles.message}><a href="#account">Log in or create an account</a> to join the conversation. Everyone can read along.</p>}
+      {ordered.map(({ comment, depth }) => {
+        const notified = comment.id === notificationCommentId;
+        return <article key={comment.id} ref={notified ? notifiedCommentRef : undefined} data-notified={notified || undefined} data-attention={(notified && !noticeSeen && showComments) || undefined} onPointerEnter={notified ? () => setNoticeSeen(true) : undefined} onFocus={notified ? () => setNoticeSeen(true) : undefined} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
         {comment.isReply && <small className={styles.replyContext}>{comment.parentCommentId ? `↳ Reply to @${comments.find(parent => parent.id === comment.parentCommentId)?.username ?? "comment"}` : "↳ Original comment removed"}</small>}
+        <div className={styles.commentContent}>
         <div className={styles.commentHeader}><strong>@{comment.username}</strong><time dateTime={comment.createdAt} title={new Date(comment.createdAt).toLocaleString()}>{new Date(comment.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
           {(activity?.canChooseQuote || comment.canEdit || comment.canDelete) && <CommentOptions label={`Options for comment by @${comment.username}`}>
@@ -157,7 +198,8 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
             setActivity(current => current ? { ...current, comments: current.comments.map(item => item.id === comment.id ? { ...item, body: updatedBody.trim() } : item) } : current);
             setEditingId(null); await reload();
           } finally { setBusy(false); }
-        }} /> : <p>{comment.body}</p>}
+        }} /> : <p className={styles.commentBody}>{comment.body}</p>}
+        </div>
         {comment.postAuthorReaction && <span className={styles.authorLike}>
           <span aria-hidden="true">{choices.find(choice => choice.kind === comment.postAuthorReaction)?.emoji}</span>
           {postAuthor.profilePhotoUrl ? <img className={styles.authorAvatar} src={postAuthor.profilePhotoUrl} width={24} height={24} alt={postAuthor.username ? `@${postAuthor.username}` : "The post author"} title={postAuthor.username ? `@${postAuthor.username} · Post author` : "Post author"} /> : <span className={styles.authorAvatar} role="img" aria-label={postAuthor.username ? `@${postAuthor.username}` : "The post author"} title="Post author">{postAuthor.username?.[0]?.toUpperCase() ?? "S"}</span>}
@@ -189,12 +231,14 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
             setBusy(true); setReplyError(""); setNotice("");
             try {
               await api(`${url}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: replyBody, photoId: comment.photoId, parentCommentId: comment.id }) });
+              setPostedNotice(count => count + 1);
               setReplyDrafts(drafts => ({ ...drafts, [comment.id]: "" })); setReplyTo(null); await reload();
             } catch (e) { setReplyError((e as Error).message); } finally { setBusy(false); }
           }} />}
-      </article>)}
-    </div>}
-    {(!userId || postAuthor.ownerId !== userId) && <PostModeration postId={postId} userId={userId} canModerate={!!activity?.canModerate && postAuthor.ownerId !== userId} reported={activity?.reportedByMe ?? false} onRemoved={onRemoved} />}
+      </article>;
+      })}
+      </div></div>
+    </div>
   </section></>;
 }
 
