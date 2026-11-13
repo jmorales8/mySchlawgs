@@ -19,6 +19,7 @@ import { useAccount } from "../../../contexts/account-context";
 type Reaction = { userId: string; username: string; kind: Kind };
 type Comment = { id: string; authorId: string; username: string; body: string; createdAt: string; canDelete: boolean; canEdit: boolean; photoId: string | null; slideNumber: number | null; parentCommentId: string | null; isReply: boolean; likeCount: number; likedByMe: boolean; likedByPostAuthor: boolean; reactionCounts: ReactionCount[]; myReaction: Kind | null; postAuthorReaction: Kind | null };
 type Activity = { reactions: Reaction[]; comments: Comment[]; bestQuotes: { photoId: string; commentId: string }[]; canChooseQuote: boolean; canModerate: boolean; reportedByMe: boolean };
+const commentPageSize = 3;
 
 export default function PostSocial({ quoteTarget, postId, userId, photoId, slideNumber, photoCount, postAuthor, onRemoved, notificationCommentId }: { notificationCommentId?: string; quoteTarget: HTMLDivElement | null; postId: string; userId: string | null; photoId: string; slideNumber: number; photoCount: number; postAuthor: { username: string | null; profilePhotoUrl: string | null; ownerId: string | null }; onRemoved: () => Promise<void> }) {
   const { user } = useAccount();
@@ -30,6 +31,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const reactionSaving = useRef(false);
   const activityRequest = useRef(0);
   const [showComments, setShowComments] = useState(!!notificationCommentId);
+  const [commentLimit, setCommentLimit] = useState<number | null>(null);
   const [showCommentComposer, setShowCommentComposer] = useState(false);
   const [noticeSeen, setNoticeSeen] = useState(false);
   const notifiedCommentRef = useRef<HTMLElement>(null);
@@ -66,6 +68,8 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     const item = stack.pop()!; ordered.push(item);
     for (const child of [...(children.get(item.comment.id) ?? [])].reverse()) stack.push({ comment: child, depth: item.depth + 1 });
   }
+  const notifiedPosition = ordered.findIndex(({ comment }) => comment.id === notificationCommentId) + 1;
+  const visibleLimit = commentLimit ?? Math.max(commentPageSize, Math.ceil(notifiedPosition / commentPageSize) * commentPageSize);
 
   async function chooseQuote(commentId: string | null) {
     setBusy(true); setError("");
@@ -141,6 +145,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
       <button ref={commentActionRef} type="button" className={styles.commentAction} aria-label={`${activity?.comments.length ?? 0} comments`} aria-expanded={showComments} aria-controls={`conversation-${postId}`} onClick={() => {
         setShowComments(!showComments);
         if (!showComments) {
+          setCommentLimit(commentPageSize);
           setReplyTo(null);
           setShowCommentComposer(!!userId);
           if (userId) requestAnimationFrame(() => commentRef.current?.focus({ preventScroll: true }));
@@ -177,7 +182,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
         }} />}
       {!userId && <p className={styles.message}><a href="#account">Log in or create an account</a> to join the conversation. Everyone can read along.</p>}
-      {ordered.map(({ comment, depth }) => {
+      {ordered.slice(0, visibleLimit).map(({ comment, depth }) => {
         const notified = comment.id === notificationCommentId;
         return <article key={comment.id} ref={notified ? notifiedCommentRef : undefined} data-notified={notified || undefined} data-attention={(notified && !noticeSeen && showComments) || undefined} onPointerEnter={notified ? () => setNoticeSeen(true) : undefined} onFocus={notified ? () => setNoticeSeen(true) : undefined} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
         {comment.isReply && <small className={styles.replyContext}>{comment.parentCommentId ? `↳ Reply to @${comments.find(parent => parent.id === comment.parentCommentId)?.username ?? "comment"}` : "↳ Original comment removed"}</small>}
@@ -237,6 +242,10 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           }} />}
       </article>;
       })}
+      {(visibleLimit < ordered.length || (visibleLimit > commentPageSize && ordered.length > commentPageSize)) && <div className={styles.commentPaging}>
+        {visibleLimit < ordered.length && <button type="button" className={styles.plain} onClick={() => setCommentLimit(visibleLimit + commentPageSize)}>Show more</button>}
+        {visibleLimit > commentPageSize && <button type="button" className={styles.plain} onClick={() => setCommentLimit(commentPageSize)}>Show less</button>}
+      </div>}
       </div></div>
     </div>
   </section></>;
