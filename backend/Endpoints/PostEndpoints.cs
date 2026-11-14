@@ -189,7 +189,7 @@ public static class PostEndpoints
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
 
-        group.MapDelete("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
+        group.MapDelete("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, bool? report, AppDbContext db, HttpContext context, CancellationToken ct) => {
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var comment = await db.Comments.FromSqlInterpolated($"SELECT * FROM post_comments WHERE \"Id\" = {commentId} AND \"PostId\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (comment is null) return Results.NotFound();
@@ -198,6 +198,14 @@ public static class PostEndpoints
             if (user is null) return Results.Unauthorized();
             var ownsPost = await db.Posts.AnyAsync(p => p.Id == id && p.OwnerId == userId, ct);
             if (comment.AuthorId != userId && !ownsPost && !user.IsAdmin && !user.IsModerator) return Results.Forbid();
+            if (report == true) {
+                if (comment.AuthorId == userId) return Results.Forbid();
+                var author = await db.Users.Where(u => u.Id == comment.AuthorId).Select(u => u.Username).SingleAsync(ct);
+                db.RemovedCommentReports.Add(new RemovedCommentReport {
+                    Id = comment.Id, PostId = id, PhotoId = comment.PhotoId, Body = comment.Body,
+                    AuthorUsername = author, ReporterUsername = user.Username, CreatedAt = DateTimeOffset.UtcNow
+                });
+            }
             db.Comments.Remove(comment);
             await db.SaveChangesAsync(ct);
             var removedBy = user.IsAdmin ? "an administrator" : user.IsModerator ? "a moderator" : "the post author";

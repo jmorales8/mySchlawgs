@@ -47,6 +47,53 @@
 .social .actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; width: auto; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-weight: 500; }
 .social .actions > .commentAction[aria-expanded=true] { background: var(--selected); color: var(--link); }
 .comments { padding-top: 4px; }
+.commentFilters { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; padding-left: 5px; }
+.commentFilters select {
+  max-inline-size: 100%;
+  min-block-size: 36px;
+  padding: 4px 8px;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: .875rem;
+  cursor: pointer;
+}
+.commentFilters select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@supports (appearance: base-select) and selector(::picker(select)) {
+  .commentFilters select,
+  .commentFilters select::picker(select) { appearance: base-select; }
+
+  .commentFilters select::picker(select) {
+    margin-block: 0;
+    border: 1px solid var(--control-border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--foreground);
+  }
+
+  .commentFilters option { padding: 8px; }
+  .commentFilters option:checked { background: var(--selected); font-weight: 600; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .commentFilters select::picker(select) {
+      clip-path: inset(0 0 100% 0 round 7px);
+      transition: clip-path 140ms ease-in, display 140ms, overlay 140ms;
+      transition-behavior: allow-discrete;
+    }
+
+    .commentFilters select:open::picker(select) {
+      clip-path: inset(0 0 0 0 round 7px);
+      transition-duration: 200ms;
+      transition-timing-function: cubic-bezier(.2, .7, .3, 1);
+    }
+
+    @starting-style {
+      .commentFilters select:open::picker(select) { clip-path: inset(0 0 100% 0 round 7px); }
+    }
+  }
+}
 .commentPaging { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 16px; }
 .social .commentPaging > button {
   min-height: 30px;
@@ -68,8 +115,20 @@
   transition: grid-template-rows 240ms cubic-bezier(.2, .7, .3, 1), visibility 240ms;
 }
 .commentDrawerBody { min-block-size: 0; display: flow-root; overflow: clip; }
+.commentDrawerBody > .comments {
+  opacity: 0;
+  translate: 0 -6px;
+  transition: opacity 140ms ease-in, translate 180ms ease-in-out;
+}
+.commentDrawer[data-open=true] .commentDrawerBody > .comments {
+  opacity: 1;
+  translate: none;
+  transition: opacity 180ms ease-out, translate 240ms cubic-bezier(.2, .7, .3, 1);
+}
 @media (prefers-reduced-motion: reduce) {
-  .commentDrawer, .commentDrawer[data-open=true] { transition: none; }
+  .commentDrawer, .commentDrawer[data-open=true],
+  .commentDrawerBody > .comments,
+  .commentDrawer[data-open=true] .commentDrawerBody > .comments { transition: none; }
 }
 .shareLink { margin-top: 16px; }
 .shareLink a, .message a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
@@ -169,20 +228,17 @@
 .comments > .commentComposer > .composerActions { grid-area: 1 / 2; margin: 0; }
 .social .writingComposer label { font-size: .875rem; font-weight: 400; color: var(--muted); }
 .social .writingComposer textarea { min-height: 84px; max-height: 280px; margin-top: 8px; padding: 14px 16px; border: 1px solid var(--control-border); border-radius: 12px; background: var(--soft); color: var(--foreground); font-weight: 400; line-height: 1.5; resize: vertical; overflow-y: auto; }
-.social .writingComposer textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -1px; }
+.social .writingComposer textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
 .social .writingComposer .composerActions > button { min-height: 40px; padding: 9px 14px; }
 .social .writingComposer .composerActions > .plain { order: -1; }
 .options { position: relative; margin-left: auto; flex-shrink: 0; font-family: var(--font-geist-sans), Arial, sans-serif; }
-.options > summary { display: grid; place-items: center; list-style: none; width: 36px; height: 36px; border-radius: 8px; color: var(--muted); cursor: pointer; }
-.options > summary::-webkit-details-marker { display: none; }
-.options > summary:is(:hover, :focus-visible), .options[open] > summary { background: var(--soft); color: var(--accent); }
-.options > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.optionsPanel { position: absolute; right: 0; top: calc(100% + 4px); z-index: 8; width: 240px; max-width: calc(100vw - 48px); padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px #402d3e20; }
+.options > button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.options > button:is(:hover, :focus-visible), .options:has(:popover-open) > button { background: var(--soft); color: var(--accent); }
+.options > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.optionsPanel { position: fixed; inset: auto; margin: 0; width: 240px; max-width: calc(100vw - 16px); overflow: auto; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px #402d3e20; }
 .options .optionsPanel > button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 6px; background: transparent; color: var(--link); text-align: left; font-size: .8125rem; line-height: 1.5; cursor: pointer; }
 .options .optionsPanel > button:not(:disabled):is(:hover, :focus-visible) { background: var(--soft); }
 .options .optionsPanel > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .options .optionsPanel > button:disabled { opacity: .55; cursor: default; }
 .comment .confirm { margin-top: 12px; }
 @media (max-width: 480px) { .quoteArea { padding-inline: 14px; } .bestQuote { gap: 8px; } }
-
-.comment .optionsPanel { top: auto; bottom: calc(100% + 4px); }

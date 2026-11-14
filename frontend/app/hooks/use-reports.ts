@@ -13,3 +13,9 @@ export function useAccountReports(page: number, postId: string | null) {
 export function useModerationReports(page: number) {
   return useApiQuery<ModerationReport[]>('/api/moderation/reports?page=' + page, { authenticated: true });
 }
+
+type RemovedCommentReport = { id: string; postId: string; authorUsername: string; reporterUsername: string; body: string; createdAt: string };
+
+export function useRemovedCommentReports(page: number) {
+  return useApiQuery<RemovedCommentReport[]>('/api/moderation/comment-reports?page=' + page, { authenticated: true });
+}

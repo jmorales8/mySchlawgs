@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import sharedStyles from "../community.module.css";
 import styles from "./photo-card.module.css";
 import Avatar from "../../shared/avatar";
@@ -24,6 +24,11 @@ export default function PhotoCard({ photos, owner, onSaved, userId, notification
   const trackRef = useRef<HTMLDivElement>(null);
   const index = Math.min(activeIndex, photos.length - 1);
   const photo = photos[index];
+  const jumpToPhoto = useCallback((next: number) => {
+    setActiveIndex(next);
+    const track = trackRef.current;
+    track?.scrollTo({ left: next * track.clientWidth, behavior: "instant" });
+  }, []);
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
@@ -43,7 +48,7 @@ export default function PhotoCard({ photos, owner, onSaved, userId, notification
   function navigate(direction: number) { navigateTo((index + direction + photos.length) % photos.length); }
   return <article className={`${sharedStyles.photoCard} ${styles.postReveal}`} aria-roledescription={photos.length > 1 ? "carousel" : undefined} aria-label={`Photos by ${photo.username ?? "the schlawgs"}`}>
     {selectedAnimal && <SchlawgProfileDialog animal={selectedAnimal} onClose={() => setSelectedAnimal(null)} />}
-    {focusIndex !== null && <PhotoFocus photos={photos} initialIndex={focusIndex} onClose={next => { setFocusIndex(null); setActiveIndex(next); trackRef.current?.scrollTo({ left: next * trackRef.current.clientWidth, behavior: "instant" }); }} />}
+    {focusIndex !== null && <PhotoFocus photos={photos} initialIndex={focusIndex} onClose={next => { setFocusIndex(null); jumpToPhoto(next); }} />}
     <header>{photo.ownerId && photo.username && photo.ownerId !== userId ? <AuthorProfileOptions key={photo.ownerId} author={photo} /> : <Avatar user={photo} className={sharedStyles.avatar} />}<div><strong>{photo.username ? `@${photo.username}` : "From the original shclawginsteins"}</strong><time dateTime={photo.uploadedAt}>{new Date(photo.uploadedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</time></div>{!!photo.animalProfiles?.length && <ul className={styles.postSchlawgs} aria-label="Schlawgs in this photo">{photo.animalProfiles.map(animal => <li key={animal.id}><button type="button" aria-label={`View ${animal.name}'s profile${user?.votingForAnimalId === animal.id ? ", your vote for schlawg of the week" : ""}`} title={animal.name} aria-haspopup="dialog" onClick={() => setSelectedAnimal(animal)}>{animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}</button>{user?.votingForAnimalId === animal.id && <span className={styles.voteCheck} aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4L19 6" /></svg></span>}</li>)}</ul>}</header>
     <div ref={setQuoteTarget} />
     {owner && photo.isUnderReview && <p className={sharedStyles.notice} role="status">This post was reported and is hidden from public feeds while awaiting moderator review. You can still see it here in My photos. <a href={`/account/reports?post=${photo.postId ?? photo.batchId ?? photo.id}`}>View reports or request a review</a>.</p>}
@@ -67,6 +72,6 @@ export default function PhotoCard({ photos, owner, onSaved, userId, notification
       {photos.length > 1 && <div className={styles.carouselDots} aria-label="Choose a photo">{photos.map((item, slideIndex) => <button key={item.id} type="button" aria-label={`Go to photo ${slideIndex + 1}`} aria-pressed={slideIndex === index} onClick={() => navigateTo(slideIndex)}><span /></button>)}</div>}
     </div>
     <PhotoCaption photo={photo} />
-    <PostSocial notificationCommentId={notificationCommentId} photoCount={photos.length} quoteTarget={quoteTarget} key={userId ?? "guest"} postId={photos[0].postId ?? photos[0].batchId ?? photos[0].id} userId={userId} photoId={photo.id} slideNumber={index + 1} postAuthor={photos[0]} onRemoved={onSaved} />
+    <PostSocial notificationCommentId={notificationCommentId} onNotificationPhoto={jumpToPhoto} photoIds={photos.map(item => item.id)} quoteTarget={quoteTarget} key={userId ?? "guest"} postId={photos[0].postId ?? photos[0].batchId ?? photos[0].id} userId={userId} photoId={photo.id} slideNumber={index + 1} postAuthor={photos[0]} onRemoved={onSaved} />
   </article>;
 }

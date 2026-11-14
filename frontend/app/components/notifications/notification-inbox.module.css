@@ -16,6 +16,17 @@
 .inbox h2 { font: 400 28px Georgia, serif; margin: 22px 0 14px; }
 .inbox h2 small { font: 14px Arial, sans-serif; }
 .inbox a { color: var(--accent); text-underline-offset: 3px; }
+.inbox .viewPost {
+  display: inline-block;
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+.inbox .card button { background: transparent; border-color: transparent; color: var(--accent); }
 .inbox button:disabled { opacity: .5; cursor: default; }
 .card { padding: 18px; border: 1px solid var(--border); border-radius: 10px; margin: 16px 0; overflow-wrap: anywhere; transition: background-color 180ms ease; }
 .card p:first-child { margin-top: 0; }

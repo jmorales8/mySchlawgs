@@ -61,6 +61,12 @@ public static class ModerationEndpoints
             var photo = await db.Photos.IgnoreQueryFilters().SingleOrDefaultAsync(p => p.Id == id && !p.IsProfilePhoto, ct);
             return photo == null ? Results.NotFound() : Results.File(photo.Data, photo.ContentType);
         });
+        moderation.MapGet("/comment-reports", async (int? page, AppDbContext db, CancellationToken ct) => {
+            var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
+            return Results.Ok(await db.RemovedCommentReports.AsNoTracking()
+                .OrderByDescending(report => report.CreatedAt).ThenByDescending(report => report.Id)
+                .Skip(offset).Take(20).ToListAsync(ct));
+        });
         moderation.MapPost("/posts/{id:guid}/remove", async (Guid id, RemovalInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             if (string.IsNullOrWhiteSpace(input.Reason) || input.Reason.Length > 1000) return Results.BadRequest(new { message = "Include a removal reason (up to 1,000 characters)." });
             var userId = UserId(context);

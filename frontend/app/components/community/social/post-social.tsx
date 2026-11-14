@@ -21,8 +21,9 @@ type Comment = { id: string; authorId: string; username: string; body: string; c
 type Activity = { reactions: Reaction[]; comments: Comment[]; bestQuotes: { photoId: string; commentId: string }[]; canChooseQuote: boolean; canModerate: boolean; reportedByMe: boolean };
 const commentPageSize = 3;
 
-export default function PostSocial({ quoteTarget, postId, userId, photoId, slideNumber, photoCount, postAuthor, onRemoved, notificationCommentId }: { notificationCommentId?: string; quoteTarget: HTMLDivElement | null; postId: string; userId: string | null; photoId: string; slideNumber: number; photoCount: number; postAuthor: { username: string | null; profilePhotoUrl: string | null; ownerId: string | null }; onRemoved: () => Promise<void> }) {
+export default function PostSocial({ quoteTarget, postId, userId, photoId, slideNumber, photoIds, postAuthor, onRemoved, notificationCommentId, onNotificationPhoto }: { notificationCommentId?: string; onNotificationPhoto: (index: number) => void; quoteTarget: HTMLDivElement | null; postId: string; userId: string | null; photoId: string; slideNumber: number; photoIds: string[]; postAuthor: { username: string | null; profilePhotoUrl: string | null; ownerId: string | null }; onRemoved: () => Promise<void> }) {
   const { user } = useAccount();
+  const photoCount = photoIds.length;
   const [activity, setActivity] = useState<Activity | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -32,15 +33,18 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const activityRequest = useRef(0);
   const [showComments, setShowComments] = useState(!!notificationCommentId);
   const [commentLimit, setCommentLimit] = useState<number | null>(null);
+  const [sortByLikes, setSortByLikes] = useState(false);
+  const [selectedCommentPhoto, setSelectedCommentPhoto] = useState("");
   const [showCommentComposer, setShowCommentComposer] = useState(false);
   const [noticeSeen, setNoticeSeen] = useState(false);
   const notifiedCommentRef = useRef<HTMLElement>(null);
+  const revealedNotification = useRef<string | null>(null);
   const [postedNotice, setPostedNotice] = useState(0);
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [replyError, setReplyError] = useState("");
-  const [removeId, setRemoveId] = useState<string | null>(null);
+  const [removal, setRemoval] = useState<{ id: string; report: boolean } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const commentActionRef = useRef<HTMLButtonElement>(null);
@@ -53,17 +57,30 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const quote = activity?.comments.find(comment => comment.id === quoteId);
   const ordered: { comment: Comment; depth: number }[] = [];
   const comments = activity?.comments ?? [];
-  const hasNotifiedComment = comments.some(comment => comment.id === notificationCommentId);
+  const notifiedPhotoId = comments.find(comment => comment.id === notificationCommentId)?.photoId;
+  const notifiedPhotoIndex = photoIds.findIndex(id => id === notifiedPhotoId);
   useEffect(() => {
-    if (hasNotifiedComment) notifiedCommentRef.current?.scrollIntoView({ block: "center" });
-  }, [hasNotifiedComment]);
-  const ids = new Set(comments.map(comment => comment.id));
+    const comment = notifiedCommentRef.current;
+    if (!notificationCommentId || !showComments || !comment || revealedNotification.current === notificationCommentId) return;
+
+    revealedNotification.current = notificationCommentId;
+    if (notifiedPhotoIndex >= 0) onNotificationPhoto(notifiedPhotoIndex);
+    comment.scrollIntoView({ block: "center" });
+  }, [notificationCommentId, notifiedPhotoIndex, onNotificationPhoto, showComments, activity]);
+  const commentPhoto = photoCount > 1 && photoIds.includes(selectedCommentPhoto) ? selectedCommentPhoto : "";
+  const filteredComments = commentPhoto ? comments.filter(comment => comment.photoId === commentPhoto) : comments;
+  const ids = new Set(filteredComments.map(comment => comment.id));
   const children = new Map<string, Comment[]>();
-  for (const comment of comments) {
+  for (const comment of filteredComments) {
     const parent = comment.parentCommentId && ids.has(comment.parentCommentId) ? comment.parentCommentId : "root";
-    children.set(parent, [...(children.get(parent) ?? []), comment]);
+    const siblings = children.get(parent);
+    if (siblings) siblings.push(comment);
+    else children.set(parent, [comment]);
   }
-  const stack = [...(children.get("root") ?? [])].reverse().map(comment => ({ comment, depth: 0 }));
+  // Activity arrives oldest first. Keep that order for replies and use newest first to break ties between threads.
+  const roots = children.get("root") ?? [];
+  if (sortByLikes) roots.sort((a, b) => a.likeCount - b.likeCount);
+  const stack = roots.map(comment => ({ comment, depth: 0 }));
   while (stack.length) {
     const item = stack.pop()!; ordered.push(item);
     for (const child of [...(children.get(item.comment.id) ?? [])].reverse()) stack.push({ comment: child, depth: item.depth + 1 });
@@ -102,12 +119,12 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     }
     catch { if (request === activityRequest.current) setError("Couldn’t refresh reactions and comments. Try again."); }
   }
-  async function removeComment(commentId: string) {
+  async function removeComment(commentId: string, report = false) {
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await api(`${url}/comments/${commentId}`, { method: "DELETE" });
-      setRemoveId(null); await reload();
+      await api(`${url}/comments/${commentId}${report ? "?report=true" : ""}`, { method: "DELETE" });
+      setRemoval(null); await reload();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
   async function react(kind: Kind) {
@@ -174,6 +191,10 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           setBusy(true); setError(""); setNotice("");
           try {
             await api(`${url}/comments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body, photoId, parentCommentId: null }) });
+            if (commentPhoto && commentPhoto !== photoId) {
+              setSelectedCommentPhoto(photoId);
+              setCommentLimit(commentPageSize);
+            }
             setBody("");
             setShowCommentComposer(false);
             setPostedNotice(count => count + 1);
@@ -182,6 +203,23 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
         }} />}
       {!userId && <p className={styles.message}><a href="#account">Log in or create an account</a> to join the conversation. Everyone can read along.</p>}
+      {comments.length > 0 && <div className={styles.commentFilters} role="group" aria-label="Comment filters">
+        <select aria-label="Sort comments" value={sortByLikes ? "liked" : "recent"} onChange={event => {
+          setSortByLikes(event.target.value === "liked");
+          setCommentLimit(commentPageSize);
+        }}>
+          <option value="recent">Most recent</option>
+          <option value="liked">Most liked</option>
+        </select>
+        {photoCount > 1 && <select aria-label="Filter comments by photo" value={commentPhoto} onChange={event => {
+          setSelectedCommentPhoto(event.target.value);
+          setCommentLimit(commentPageSize);
+        }}>
+          <option value="">All photos</option>
+          {photoIds.map((id, index) => <option key={id} value={id}>Photo {index + 1}</option>)}
+        </select>}
+      </div>}
+      {activity && !ordered.length && <p className={styles.message} role="status">{commentPhoto ? "No comments on this photo yet." : "No comments yet."}</p>}
       {ordered.slice(0, visibleLimit).map(({ comment, depth }) => {
         const notified = comment.id === notificationCommentId;
         return <article key={comment.id} ref={notified ? notifiedCommentRef : undefined} data-notified={notified || undefined} data-attention={(notified && !noticeSeen && showComments) || undefined} onPointerEnter={notified ? () => setNoticeSeen(true) : undefined} onFocus={notified ? () => setNoticeSeen(true) : undefined} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
@@ -191,8 +229,9 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
           {(activity?.canChooseQuote || comment.canEdit || comment.canDelete) && <CommentOptions label={`Options for comment by @${comment.username}`}>
             {activity?.canChooseQuote && <button type="button" disabled={busy || quoteId === comment.id} onClick={() => void chooseQuote(comment.id)}>{quoteId === comment.id ? "Selected best quote" : photoCount > 1 ? `Choose as best quote for photo ${slideNumber}` : "Choose as best quote"}</button>}
-            {comment.canEdit && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoveId(null); }}>Edit comment</button>}
-            {comment.canDelete && <button type="button" disabled={busy} onClick={() => { if (user?.isAdmin && activity?.canModerate) void removeComment(comment.id); else setRemoveId(comment.id); }}>Remove comment{user?.isAdmin && activity?.canModerate ? " · Admin" : ""}</button>}
+            {comment.canEdit && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoval(null); }}>Edit comment</button>}
+            {comment.canDelete && <button type="button" disabled={busy} onClick={() => { if (user?.isAdmin && activity?.canModerate) void removeComment(comment.id); else setRemoval({ id: comment.id, report: false }); }}>Remove comment{user?.isAdmin && activity?.canModerate ? " · Admin" : ""}</button>}
+            {comment.canDelete && comment.authorId !== userId && <button type="button" disabled={busy} onClick={() => setRemoval({ id: comment.id, report: true })}>Remove comment and report</button>}
           </CommentOptions>}
         </div>
         {editingId === comment.id ? <CommentEditor body={comment.body} reply={comment.isReply} busy={busy} onCancel={() => setEditingId(null)} onSave={async updatedBody => {
@@ -223,7 +262,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
             setEditingId(null); setReplyError(""); setReplyTo(replyTo?.id === comment.id ? null : comment);
           }}>Reply</button>
         </div>
-            {removeId === comment.id && <div className={styles.confirm} role="group" aria-label="Confirm comment removal"><span>Remove this comment?</span><button type="button" disabled={busy} onClick={() => void removeComment(comment.id)}>Remove</button><button type="button" disabled={busy} onClick={() => setRemoveId(null)}>Cancel</button></div>}
+            {removal?.id === comment.id && <div className={styles.confirm} role="group" aria-label="Confirm comment removal"><span>{removal.report ? "Remove this comment and save a copy for moderators?" : "Remove this comment?"}</span><button type="button" disabled={busy} onClick={() => void removeComment(comment.id, removal.report)}>{removal.report ? "Remove and report" : "Remove"}</button><button type="button" disabled={busy} onClick={() => setRemoval(null)}>Cancel</button></div>}
         {userId && replyTo?.id === comment.id && <CommentComposer
           id={`reply-${postId}-${comment.id}`} reply textareaRef={replyRef}
           label={`Reply to @${comment.username} · ${comment.slideNumber ? `Photo ${comment.slideNumber}` : "Post"}`}

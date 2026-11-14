@@ -1,23 +1,45 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import styles from "./post-social.module.css";
 
 export default function CommentOptions({ label, children }: { label: string; children: ReactNode }) {
-  const ref = useRef<HTMLDetailsElement>(null);
+  const panelId = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    function close(event: PointerEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) ref.current.open = false;
+    function close(event: Event) {
+      if (event.target instanceof Node && panel.current?.contains(event.target)) return;
+      panel.current?.hidePopover();
     }
-    document.addEventListener("pointerdown", close);
-    return () => document.removeEventListener("pointerdown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
   }, []);
-  return <details ref={ref} className={styles.options} onKeyDown={event => {
-    if (event.key === "Escape") { event.preventDefault(); ref.current!.open = false; ref.current?.querySelector("summary")?.focus(); }
-  }}>
-    <summary aria-label={label} title={label}><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg></summary>
-    <div className={styles.optionsPanel} onClick={event => {
-      if ((event.target as HTMLElement).closest("button")) { ref.current!.open = false; ref.current?.querySelector("summary")?.focus(); }
+  return <div className={styles.options}>
+    <button type="button" ref={trigger} popoverTarget={panelId} aria-label={label} title={label}><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg></button>
+    <div id={panelId} ref={panel} popover="auto" className={styles.optionsPanel} onToggle={event => {
+      if (event.newState !== "open" || !trigger.current) return;
+      const menu = event.currentTarget;
+      const anchor = trigger.current.getBoundingClientRect();
+      const { clientWidth, clientHeight } = document.documentElement;
+      const gap = 4;
+      const gutter = 8;
+      const below = clientHeight - anchor.bottom - gap;
+      const above = anchor.top - gap;
+      menu.style.maxHeight = "";
+      const openAbove = below < menu.offsetHeight + gutter && above > below;
+      menu.style.maxHeight = `${Math.max(0, (openAbove ? above : below) - gutter)}px`;
+      menu.style.left = `${Math.max(gutter, Math.min(anchor.right, clientWidth - gutter) - menu.offsetWidth)}px`;
+      menu.style.top = `${openAbove ? anchor.top - gap - menu.offsetHeight : anchor.bottom + gap}px`;
+    }} onClick={event => {
+      if ((event.target as HTMLElement).closest("button")) {
+        event.currentTarget.hidePopover();
+        trigger.current?.focus({ preventScroll: true });
+      }
     }}>{children}</div>
-  </details>;
+  </div>;
 }

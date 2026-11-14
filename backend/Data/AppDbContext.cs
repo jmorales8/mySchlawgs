@@ -15,12 +15,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PostReaction> Reactions => Set<PostReaction>();
     public DbSet<PostComment> Comments => Set<PostComment>();
     public DbSet<PostReport> Reports => Set<PostReport>();
+    public DbSet<RemovedCommentReport> RemovedCommentReports => Set<RemovedCommentReport>();
     public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<PostDispute> Disputes => Set<PostDispute>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var removedComment = modelBuilder.Entity<RemovedCommentReport>();
+        removedComment.ToTable("removed_comment_reports");
+        removedComment.HasIndex(x => new { x.CreatedAt, x.Id });
+        removedComment.Property(x => x.Body).HasMaxLength(2000);
+        removedComment.Property(x => x.AuthorUsername).HasMaxLength(30);
+        removedComment.Property(x => x.ReporterUsername).HasMaxLength(30);
+
         var snapshot = modelBuilder.Entity<VoteSnapshot>();
         snapshot.ToTable("vote_snapshots", table => table.HasCheckConstraint("CK_vote_snapshots_singleton", "\"Id\" = 1"));
         snapshot.HasKey(x => x.Id);
