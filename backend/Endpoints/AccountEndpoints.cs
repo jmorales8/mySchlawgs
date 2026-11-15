@@ -54,10 +54,15 @@ public static class AccountEndpoints
                 return Results.BadRequest(new { message = "Use a 3–30 character username (letters, numbers, underscores) and an 8–128 character password." });
             var user = new AppUser { Id = Guid.NewGuid(), Username = username, NormalizedUsername = username.ToUpperInvariant(), PasswordHash = "" };
             user.PasswordHash = hasher.HashPassword(user, input.Password);
+            await using var transaction = await db.Database.BeginTransactionAsync(context.RequestAborted);
             db.Users.Add(user);
             try { await db.SaveChangesAsync(); }
             catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })
             { return Results.Conflict(new { message = "That username is already taken." }); }
+            // Check after the unique insert so a concurrent ban and deletion has committed.
+            if (await db.UsernameBans.AnyAsync(x => x.NormalizedUsername == user.NormalizedUsername, context.RequestAborted))
+                return Results.Conflict(new { message = "That username is unavailable." });
+            await transaction.CommitAsync(context.RequestAborted);
             await SignIn(context, user);
             return Results.Ok(UserResponse(user));
         }).RequireRateLimiting("registration");

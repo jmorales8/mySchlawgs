@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Photo> Photos => Set<Photo>();
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<UsernameBan> UsernameBans => Set<UsernameBan>();
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostReaction> Reactions => Set<PostReaction>();
     public DbSet<PostComment> Comments => Set<PostComment>();
@@ -22,6 +23,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var usernameBan = modelBuilder.Entity<UsernameBan>();
+        usernameBan.ToTable("username_bans");
+        usernameBan.HasKey(x => x.NormalizedUsername);
+        usernameBan.Property(x => x.NormalizedUsername).HasMaxLength(30);
+
         var removedComment = modelBuilder.Entity<RemovedCommentReport>();
         removedComment.ToTable("removed_comment_reports");
         removedComment.HasIndex(x => new { x.CreatedAt, x.Id });

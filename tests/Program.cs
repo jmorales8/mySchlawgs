@@ -384,11 +384,16 @@ try {
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "accepted dispute restores public post");
     if (await db.Reports.AnyAsync(r => r.PostId == postId && r.DismissedAt == null)) throw new Exception("Accepted dispute left active reports");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{disputeId}/decision", new { accept = false, reason = "Overwrite decision" }), HttpStatusCode.Conflict, "review decision cannot be overwritten");
-    await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.OK, "new report after restoration");
+    await Check(await third.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.OK, "new report after restoration");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "new active report hides restored post again");
     var newDispute = await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "New report to review" }), HttpStatusCode.OK, "new reports allow new dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{newDispute.GetProperty("id").GetGuid()}/decision", new { accept = false, reason = "Report remains valid" }), HttpStatusCode.NoContent, "moderator rejects dispute with explanation");
     await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "Repeat same rejected dispute" }), HttpStatusCode.Conflict, "same rejected reports cannot be appealed repeatedly");
+    var dismissReportPath = $"/api/moderation/posts/{postId}/reports/{thirdId}/dismiss";
+    await Check(await second.PostAsync(dismissReportPath, null), HttpStatusCode.Forbidden, "ordinary user cannot dismiss a report");
+    await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "moderator dismisses a false report");
+    await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "retrying dismissal succeeds");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "dismissing the last active report restores the public post");
     var selfDispute = await Check(await third.PostAsJsonAsync($"/api/account/reports/{otherPost}/dispute", new { explanation = "My removed post" }), HttpStatusCode.OK, "moderator can submit own dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{selfDispute.GetProperty("id").GetGuid()}/decision", new { accept = true, reason = "Approve myself" }), HttpStatusCode.Forbidden, "moderator cannot approve own dispute");
     if (await db.Notifications.CountAsync(n => n.UserId == ownerId && n.Kind == "dispute") != 2) throw new Exception("Dispute outcomes not notified");
@@ -401,6 +406,23 @@ try {
     if (captchaConfig.TryGetProperty("secretKey", out _)) throw new Exception("CAPTCHA secret exposed");
     for (var attempt = 0; attempt < 20; attempt++) { using var response = await first.PostAsJsonAsync("/api/auth/login", new { username = names[0], password = "wrong" }); }
     await Check(await first.PostAsJsonAsync("/api/auth/login", new { username = names[0], password }), HttpStatusCode.TooManyRequests, "login flooding rate limited");
+    var banPath = $"/api/moderation/accounts/{thirdId}/ban";
+    await Check(await third.PostAsJsonAsync(banPath, new { username = names[2] }), HttpStatusCode.Forbidden, "moderator cannot ban accounts");
+    await db.Users.Where(u => u.Id == ownerId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
+    var lookup = await Check(await first.GetAsync($"/api/moderation/accounts/lookup?username={names[2].ToUpperInvariant()}"), HttpStatusCode.OK, "admin can look up an exact username case-insensitively");
+    if (lookup.GetProperty("id").GetGuid() != thirdId) throw new Exception("Account lookup returned the wrong user");
+    await Check(await first.PostAsJsonAsync(banPath, new { username = names[0] }), HttpStatusCode.BadRequest, "ban requires exact username confirmation");
+    await Check(await first.PostAsJsonAsync(banPath, new { username = names[2] }), HttpStatusCode.NoContent, "admin bans account");
+    await Check(await third.GetAsync("/api/auth/me"), HttpStatusCode.Unauthorized, "ban revokes active session");
+    if (!await db.UsernameBans.AnyAsync(b => b.NormalizedUsername == names[2].ToUpperInvariant())
+        || await db.Users.AnyAsync(u => u.Id == thirdId)
+        || await db.Posts.IgnoreQueryFilters().AnyAsync(p => p.OwnerId == thirdId)
+        || await db.Photos.IgnoreQueryFilters().AnyAsync(p => p.OwnerId == thirdId)
+        || await db.AnimalProfiles.AnyAsync(a => a.OwnerId == thirdId)
+        || await db.Comments.AnyAsync(c => c.AuthorId == thirdId)
+        || await db.Reactions.AnyAsync(r => r.UserId == thirdId)
+        || await db.CommentLikes.AnyAsync(l => l.UserId == thirdId))
+        throw new Exception("Ban did not reserve the username and delete the account's content and activity");
     Console.WriteLine($"{passed} checks passed, plus CAPTCHA verifier checks.");
 } finally {
     // Remove only the accounts and photos created by this run.
@@ -409,6 +431,8 @@ try {
     await db.Photos.IgnoreQueryFilters().Where(x => x.OwnerId != null && ids.Contains(x.OwnerId.Value)).ExecuteDeleteAsync();
     await db.Posts.IgnoreQueryFilters().Where(x => x.OwnerId != null && ids.Contains(x.OwnerId.Value)).ExecuteDeleteAsync();
     await db.Users.Where(x => ids.Contains(x.Id)).ExecuteDeleteAsync();
+    var normalizedNames = names.Select(name => name.ToUpperInvariant()).ToArray();
+    await db.UsernameBans.Where(b => normalizedNames.Contains(b.NormalizedUsername)).ExecuteDeleteAsync();
 }
 
 

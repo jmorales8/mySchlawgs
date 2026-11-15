@@ -25,8 +25,12 @@ public static class AdminAccountProvisioner
             IsAdmin = true, PasswordHash = ""
         };
         user.PasswordHash = new PasswordHasher<AppUser>().HashPassword(user, password);
+        await using var transaction = await db.Database.BeginTransactionAsync();
         db.Users.Add(user);
         await db.SaveChangesAsync();
+        if (await db.UsernameBans.AnyAsync(ban => ban.NormalizedUsername == user.NormalizedUsername))
+            throw new InvalidOperationException("That username is unavailable. Choose a new admin username.");
+        await transaction.CommitAsync();
         Console.WriteLine($"Admin account created.\nUsername: {username}\nPassword: {password}");
     }
 }

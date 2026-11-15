@@ -906,6 +906,20 @@ namespace backend.Data.Migrations
                     b.ToTable("removed_comment_reports", (string)null);
                 });
 
+            modelBuilder.Entity("Backend.Models.UsernameBan", b =>
+                {
+                    b.Property<string>("NormalizedUsername")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("NormalizedUsername");
+
+                    b.ToTable("username_bans", (string)null);
+                });
+
             modelBuilder.Entity("Backend.Models.VoteSnapshot", b =>
                 {
                     b.Property<int>("Id")

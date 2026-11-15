@@ -46,13 +46,13 @@ public static class ModerationEndpoints
         moderation.MapGet("/reports", async (int? page, AppDbContext db, CancellationToken ct) => {
             var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
             return Results.Ok(await db.Posts.IgnoreQueryFilters().AsSplitQuery()
-                .Where(p => p.RemovedAt != null || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null))
-                .OrderBy(p => p.RemovedAt != null).ThenByDescending(p => db.Reports.Count(r => r.PostId == p.Id)).ThenBy(p => p.Id)
+                .Where(p => p.RemovedAt != null || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null) || db.Disputes.Any(d => d.PostId == p.Id && d.Status == "pending"))
+                .OrderBy(p => p.RemovedAt != null).ThenByDescending(p => db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null)).ThenBy(p => p.Id)
                 .Skip(offset).Take(20).Select(p => new {
                     p.Id, p.RemovedAt, p.RemovalReason,
                     username = db.Users.Where(u => u.Id == p.OwnerId).Select(u => u.Username).FirstOrDefault(),
                     reportCount = db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null),
-                    reports = db.Reports.Where(r => r.PostId == p.Id && r.DismissedAt == null).OrderByDescending(r => r.CreatedAt).Select(r => new { r.Reason, r.Details, r.CreatedAt }).ToList(),
+                    reports = db.Reports.Where(r => r.PostId == p.Id && r.DismissedAt == null).OrderByDescending(r => r.CreatedAt).Select(r => new { r.ReporterId, r.Reason, r.Details, r.CreatedAt }).ToList(),
                     disputes = db.Disputes.Where(d => d.PostId == p.Id).OrderByDescending(d => d.CreatedAt).Select(d => new { d.Id, d.Explanation, d.Status, d.DecisionReason, d.CreatedAt }).ToList(),
                     photos = db.Photos.IgnoreQueryFilters().Where(photo => photo.PostId == p.Id).OrderBy(photo => photo.BatchPosition).Select(photo => new { photo.Id, photo.Description }).ToList()
                 }).ToListAsync(ct));
@@ -67,6 +67,22 @@ public static class ModerationEndpoints
                 .OrderByDescending(report => report.CreatedAt).ThenByDescending(report => report.Id)
                 .Skip(offset).Take(20).ToListAsync(ct));
         });
+        moderation.MapPost("/posts/{id:guid}/reports/{reporterId:guid}/dismiss", async (Guid id, Guid reporterId, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").IgnoreQueryFilters().SingleOrDefaultAsync(ct);
+            if (post == null) return Results.NotFound(new { message = "Post not found." });
+            if (post.OwnerId == UserId(context)) return Results.Json(new { message = "Another moderator must review reports on your own post." }, statusCode: 403);
+
+            var report = await db.Reports.FindAsync([id, reporterId], ct);
+            if (report == null) return Results.NotFound(new { message = "Report not found." });
+            if (report.DismissedAt == null)
+            {
+                report.DismissedAt = DateTimeOffset.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            await transaction.CommitAsync(ct);
+            return Results.NoContent();
+        }).RequireRateLimiting("social");
         moderation.MapPost("/posts/{id:guid}/remove", async (Guid id, RemovalInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             if (string.IsNullOrWhiteSpace(input.Reason) || input.Reason.Length > 1000) return Results.BadRequest(new { message = "Include a removal reason (up to 1,000 characters)." });
             var userId = UserId(context);
@@ -81,5 +97,6 @@ public static class ModerationEndpoints
             return Results.NoContent();
         }).RequireRateLimiting("social");
         DisputeEndpoints.MapDisputeEndpoints(endpoints, moderation);
+        AccountBanEndpoints.MapAccountBanEndpoints(moderation);
     }
 }

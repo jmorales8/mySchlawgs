@@ -2,12 +2,37 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import Link from "next/link";
+import { api } from "../components/api";
 import { useModerationReports, useRemovedCommentReports } from "../hooks/use-reports";
 import { useAccount } from "../contexts/account-context";
 import PostModeration from "../components/community/moderation/post-moderation";
 import DisputeForm from "../components/community/moderation/dispute-form";
 import sharedStyles from "../components/community/community.module.css";
 import styles from "./page.module.css";
+import AccountBan from "./account-ban";
+
+function RemoveReportButton({ postId, reporterId, onRemoved }: { postId: string; reporterId: string; onRemoved: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function removeReport() {
+    setBusy(true);
+    setError("");
+    try {
+      await api(`/api/moderation/posts/${postId}/reports/${reporterId}/dismiss`, { method: "POST" });
+      await onRemoved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <>
+    <button type="button" disabled={busy} onClick={() => void removeReport()}>{busy ? "Removing report…" : "Remove report"}</button>
+    {error && <p className={styles.error} role="alert">{error}</p>}
+  </>;
+}
 
 export default function ModerationPage() {
   const [page, setPage] = useState(0);
@@ -18,15 +43,20 @@ export default function ModerationPage() {
   const comments = useRemovedCommentReports(commentPage);
   return <main className={sharedStyles.shell}><nav className={sharedStyles.nav}><Link href="/">← Back to community</Link></nav><div style={{ maxWidth: 900, margin: "auto", padding: 24 }}>
     <h1>Moderation queue</h1><p>Review reported posts. Reported posts are hidden from public feeds while awaiting review.</p>
+    {user?.isAdmin && <AccountBan />}
     {loading && <p role="status">Loading reports…</p>}{error && <p className={styles.error} role="alert">{error}</p>}
     {!loading && !error && <>
       {entries.length === 0 && <p>No reports on this page.</p>}
       {entries.map(entry => <article className={sharedStyles.card} key={entry.id}>
         <h2>@{entry.username ?? "unknown"} · {entry.reportCount} reports</h2>
-        <p>{entry.removedAt ? `Removed: ${entry.removalReason}` : "Hidden from public feeds · Awaiting review"}</p>
+        <p>{entry.removedAt ? `Removed: ${entry.removalReason}` : entry.reportCount > 0 ? "Hidden from public feeds · Awaiting review" : "Visible in public feeds · Dispute awaiting review"}</p>
         <details><summary>View photos and report details</summary>
           {entry.photos.map(photo => <figure key={photo.id}><img src={`/api/moderation/photos/${photo.id}`} alt="Reported post photo" loading="lazy" style={{ maxWidth: "100%", maxHeight: 400, objectFit: "contain" }} /><figcaption>{photo.description}</figcaption></figure>)}
-          <ul>{entry.reports.map((report, index) => <li key={index}><strong>{report.reason}</strong> · {new Date(report.createdAt).toLocaleString()}<p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{report.details}</p></li>)}</ul>
+          <ul>{entry.reports.map(report => <li key={report.reporterId}>
+            <strong>{report.reason}</strong> · {new Date(report.createdAt).toLocaleString()}
+            <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{report.details}</p>
+            <RemoveReportButton postId={entry.id} reporterId={report.reporterId} onRemoved={refresh} />
+          </li>)}</ul>
         </details>
         {!entry.removedAt && <PostModeration postId={entry.id} userId={userId} canModerate reported={false} onRemoved={refresh} />}
         {entry.disputes.map(dispute => <section key={dispute.id}><h3>Author dispute · {dispute.status}</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{dispute.explanation}</p>{dispute.decisionReason && <p>{dispute.decisionReason}</p>}{dispute.status === "pending" && <DisputeForm id={dispute.id} review onSaved={refresh} />}</section>)}

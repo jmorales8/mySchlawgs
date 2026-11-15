@@ -50,11 +50,16 @@ internal static class PasswordResetRequestChecks
             var pendingResponse = await Request(pending.PendingEmail!);
             var verifiedResponse = await Request(verified.Email!);
             var sentBody = await fake.Sent.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await db.Users.Where(x => x.Id == verified.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.PasswordResetSentAt, DateTimeOffset.UtcNow.AddMinutes(-29)));
             var repeatedResponse = await Request(verified.Email!);
             if (unknownResponse != pendingResponse || unknownResponse != verifiedResponse || unknownResponse != repeatedResponse) throw new Exception("Recovery disclosed account status");
             Console.WriteLine("PASS recovery response identical for unknown, unverified, verified and cooldown addresses");
             var stored = await db.Users.AsNoTracking().SingleAsync(x => x.Id == verified.Id);
             using var body = JsonDocument.Parse(sentBody);
+            using var accepted = JsonDocument.Parse(verifiedResponse);
+            if (accepted.RootElement.GetProperty("retryAfterSeconds").GetInt32() != 1800)
+                throw new Exception("Recovery response must advertise a 30-minute cooldown");
             var text = body.RootElement.GetProperty("text").GetString()!;
             var token = text.Split("&token=")[1].Split('\n')[0];
             if (stored.PasswordResetHash != VerificationEmail.Hash(token) || stored.PasswordResetExpiresAt <= DateTimeOffset.UtcNow || stored.PasswordResetExpiresAt > DateTimeOffset.UtcNow.AddMinutes(31) || stored.PasswordHash != "fixture") throw new Exception("Recovery token issuance failed");

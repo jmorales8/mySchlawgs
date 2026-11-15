@@ -13,7 +13,8 @@ public static class PasswordResetEndpoints
 {
     public sealed record ForgotInput(string? Email, string? CaptchaToken);
     public sealed record ResetInput(Guid UserId, string? Token, string? Password, string? ConfirmPassword);
-    private static IResult Accepted() => Results.Ok(new { message = "If an account has this verified email address, we'll send a password reset link. Check your inbox and spam folder. Allow a minute before requesting another link." });
+    private const int CooldownSeconds = 30 * 60;
+    private static IResult Accepted() => Results.Ok(new { message = "If an account has this verified email address, we'll send a password reset link. Check your inbox and spam folder.", retryAfterSeconds = CooldownSeconds });
     private static IResult InvalidLink() => Results.BadRequest(new { message = "This reset link is invalid, expired, or already used. Request a new password reset link." });
 
     public static void MapPasswordResetEndpoints(this IEndpointRouteBuilder endpoints)
@@ -27,11 +28,12 @@ public static class PasswordResetEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             // Only confirmed Email is searched. PendingEmail cannot recover an account.
             var user = await db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Email\" = {email} FOR UPDATE").SingleOrDefaultAsync(ct);
-            if (user is null || user.PasswordResetSentAt > DateTimeOffset.UtcNow.AddMinutes(-1)) return Accepted();
+            var now = DateTimeOffset.UtcNow;
+            if (user is null || user.PasswordResetSentAt > now.AddSeconds(-CooldownSeconds)) return Accepted();
             var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             user.PasswordResetHash = VerificationEmail.Hash(token);
-            user.PasswordResetExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30);
-            user.PasswordResetSentAt = DateTimeOffset.UtcNow;
+            user.PasswordResetExpiresAt = now.AddMinutes(30);
+            user.PasswordResetSentAt = now;
             await db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
             delivery.Enqueue(new(user.Id, email, token));

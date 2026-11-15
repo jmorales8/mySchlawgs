@@ -6,6 +6,7 @@ import sharedStyles from "./community.module.css";
 import composerStyles from "./post-composer.module.css";
 import layoutStyles from "./community-layout.module.css";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api } from "../api";
 import { usePhotoFeed, type Feed } from "../../hooks/use-photo-feed";
 import { useFeedCaughtUp } from "../../hooks/use-feed-caught-up";
@@ -37,10 +38,12 @@ function subscribeMobileNavigation(onChange: () => void) {
 function mobileNavigationSnapshot() { return window.matchMedia("(max-width: 760px)").matches; }
 function serverNavigationSnapshot() { return false; }
 
-export default function Community({ postId, discovery, notificationCommentId }: { postId?: string; notificationCommentId?: string; discovery?: "popular" | "niche" | "relevant" }) {
+export default function Community({ postId, discovery, notificationCommentId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; discovery?: "popular" | "niche" | "relevant"; initialFeed?: Feed }) {
+  const router = useRouter();
+  const showFeedNavigation = !postId || !!discovery;
   const mobileNavigation = useSyncExternalStore(subscribeMobileNavigation, mobileNavigationSnapshot, serverNavigationSnapshot);
   const openTutorial = useTutorial();
-  const [feed, setFeed] = useState<Feed>("latest");
+  const [feed, setFeed] = useState<Feed>(initialFeed);
   const { user, setUser, ready, accountError } = useAccount();
   const [mode, setMode] = useState<"register" | "login">("register");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
@@ -147,6 +150,11 @@ export default function Community({ postId, discovery, notificationCommentId }: 
   }, []);
   function chooseFeed(next: Feed) { setFeed(next); }
 
+  function navigateToFeed(next: Feed) {
+    if (postId) router.push(next === "latest" ? "/" : `/?feed=${next}`);
+    else chooseFeed(next);
+  }
+
   function updateDrafts(next: Draft[]) { draftRef.current = next; setDrafts(next); }
   const clearDrafts = useCallback(() => { draftRef.current.forEach(d => URL.revokeObjectURL(d.url)); draftRef.current = []; setDrafts([]); setSharedDescription(""); setDescriptionMode("individual"); if (fileRef.current) fileRef.current.value = ""; }, []);
 
@@ -199,7 +207,7 @@ export default function Community({ postId, discovery, notificationCommentId }: 
     const data = new FormData();
     drafts.forEach(d => { data.append("files", d.file); data.append("descriptions", descriptionMode === "shared" ? sharedDescription : d.description); });
     data.append("animalIds", JSON.stringify(drafts.map(d => d.animalIds)));
-    try { await api("/api/photos", { method: "POST", body: data }); setComposerClosing("uploaded"); chooseFeed("latest"); if (feed === "latest") await refresh(); }
+    try { await api("/api/photos", { method: "POST", body: data }); setComposerClosing("uploaded"); if (!postId) { chooseFeed("latest"); if (feed === "latest") await refresh(); } }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
@@ -262,17 +270,17 @@ export default function Community({ postId, discovery, notificationCommentId }: 
       </Link>
       {!mobileNavigation && accountMenu}
     </div>
-      {!postId && ready && user && (
+      {showFeedNavigation && ready && user && (
         <button type="button" className={layoutStyles.mobilePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>
           <span aria-hidden="true">📷+</span>Post
         </button>
       )}
       {mobileNavigation && !postId && <VoteLeaders compact />}
       <div className={layoutStyles.bottomNavigation} data-active={mobileNavigation}>
-      {!postId && <div className={layoutStyles.feedMenu} role="group" aria-label="Choose your feed">
-          <button type="button" aria-pressed={feed === "latest"} onClick={() => chooseFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
-          <button type="button" aria-pressed={feed === "interacted"} onClick={() => chooseFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
-          <button type="button" aria-pressed={feed === "mine"} onClick={() => chooseFeed("mine")}>My photos</button>
+      {showFeedNavigation && <div className={layoutStyles.feedMenu} role="group" aria-label="Choose your feed">
+          <button type="button" aria-pressed={!postId && feed === "latest"} onClick={() => navigateToFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
+          <button type="button" aria-pressed={!postId && feed === "interacted"} onClick={() => navigateToFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
+          <button type="button" aria-pressed={!postId && feed === "mine"} onClick={() => navigateToFeed("mine")}>My photos</button>
           {ready && user && <button type="button" className={layoutStyles.sharePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>}
         </div>}
       <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} collapsible={mobileNavigation} />
@@ -300,7 +308,7 @@ export default function Community({ postId, discovery, notificationCommentId }: 
       <section className={`${layoutStyles.content} ${postId ? layoutStyles.singlePost : ""}`} id="feed">
         {!ready && <p className={sharedStyles.muted} role="status">Getting your account…</p>}
         {(error || accountError) && !composerOpen && <ErrorToast key={error || accountError} message={error || accountError} />}{notice && <p className={sharedStyles.notice} role="status">{notice}</p>}
-        {user && !postId && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>
+        {user && showFeedNavigation && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>
         <form className={composerStyles.composerForm} onSubmit={upload} aria-busy={busy} inert={composerClosing !== null}>
           <div className={composerStyles.composerHeader}><p className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>A moment worth sharing</p><button type="button" disabled={busy || composerClosing !== null} onClick={dismissComposer} aria-label="Close post composer">✕</button></div>
           <h2 id="composer-title">What&apos;s your schlawg up to?</h2><p className={sharedStyles.muted}>Add up to 10 photos with one shared description or a story for each. 10 MB per photo, 50 MB total. Your draft stays here if you close this window.</p>
