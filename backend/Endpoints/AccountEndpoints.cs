@@ -21,7 +21,7 @@ public static class AccountEndpoints
         var at = email.LastIndexOf('@');
         return at > 0 ? $"{email[0]}***{email[at - 1]}{email[at..]}" : null;
     }
-    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, user.VotingForAnimalId, verifiedEmail = MaskEmail(user.Email), profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
+    public static object UserResponse(AppUser user) => new { user.Id, user.Username, user.IsAdmin, user.IsModerator, user.PostingRestrictedAt, user.VotingForAnimalId, verifiedEmail = MaskEmail(user.Email), profilePhotoUrl = user.ProfilePhotoId is Guid id ? $"/api/photos/{id}" : null };
 
     public static void MapAccountEndpoints(this IEndpointRouteBuilder endpoints)
     {

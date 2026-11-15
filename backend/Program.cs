@@ -109,6 +109,7 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapAccountEndpoints();
+app.MapPosterFollowEndpoints();
 app.MapEmailEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapVoteSnapshotEndpoints();

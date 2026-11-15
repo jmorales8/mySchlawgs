@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Photo> Photos => Set<Photo>();
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<PosterFollow> PosterFollows => Set<PosterFollow>();
     public DbSet<UsernameBan> UsernameBans => Set<UsernameBan>();
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostReaction> Reactions => Set<PostReaction>();
@@ -23,6 +24,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var follow = modelBuilder.Entity<PosterFollow>();
+        follow.ToTable("poster_follows", table => table.HasCheckConstraint("CK_poster_follows_distinct_users", "\"FollowerId\" <> \"PosterId\""));
+        follow.HasKey(x => new { x.FollowerId, x.PosterId });
+        follow.HasOne<AppUser>().WithMany().HasForeignKey(x => x.FollowerId).OnDelete(DeleteBehavior.Cascade);
+        follow.HasOne<AppUser>().WithMany().HasForeignKey(x => x.PosterId).OnDelete(DeleteBehavior.Cascade);
+
         var usernameBan = modelBuilder.Entity<UsernameBan>();
         usernameBan.ToTable("username_bans");
         usernameBan.HasKey(x => x.NormalizedUsername);

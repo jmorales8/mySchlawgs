@@ -58,6 +58,7 @@ MultipartFormDataContent Upload(bool invalid = false, int count = 2) {
         bytes.Headers.ContentType = new("image/png");
         form.Add(bytes, "files", $"dog{i}.png"); form.Add(new StringContent($"Story {i}"), "descriptions");
     }
+    form.Add(new StringContent(JsonSerializer.Serialize(Enumerable.Repeat(Array.Empty<Guid>(), count))), "animalIds");
     return form;
 }
 try {
@@ -150,6 +151,17 @@ try {
     await Check(await anonymous.DeleteAsync($"/api/posts/{postId}/comments/{commentId}"), HttpStatusCode.Unauthorized, "anonymous removal rejected");
     var otherUpload = await Check(await third.PostAsync("/api/photos", Upload(count: 1)), HttpStatusCode.Created, "separate post");
     var otherPost = otherUpload[0].GetProperty("postId").GetGuid();
+    var followPath = $"/api/account/following/{thirdId}";
+    await Check(await anonymous.GetAsync("/api/photos?feed=following"), HttpStatusCode.Unauthorized, "following feed requires login");
+    await Check(await first.PutAsync($"/api/account/following/{ownerId}", null), HttpStatusCode.BadRequest, "cannot follow yourself");
+    await Check(await first.PutAsync(followPath, null), HttpStatusCode.NoContent, "follow another poster");
+    await Check(await first.PutAsync(followPath, null), HttpStatusCode.NoContent, "repeating a follow is safe");
+    var followingFeed = await Check(await first.GetAsync("/api/photos?feed=following"), HttpStatusCode.OK, "following feed loads");
+    if (followingFeed.GetArrayLength() != 1 || followingFeed[0].GetProperty("postId").GetGuid() != otherPost)
+        throw new Exception("Following feed should contain only the followed poster's post");
+    await Check(await first.DeleteAsync(followPath), HttpStatusCode.NoContent, "unfollow a poster");
+    if ((await Check(await first.GetAsync("/api/photos?feed=following"), HttpStatusCode.OK, "following feed reloads")).GetArrayLength() != 0)
+        throw new Exception("Unfollowed poster remains in the following feed");
     var editPath = $"/api/posts/{postId}/comments/{commentId}";
     var originalComment = await db.Comments.AsNoTracking().SingleAsync(c => c.Id == commentId);
     await Check(await anonymous.PatchAsJsonAsync(editPath, new { body = "Guest edit" }), HttpStatusCode.Unauthorized, "anonymous comment edit denied");
@@ -296,6 +308,12 @@ try {
     await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.Forbidden, "owner cannot report own post");
     if (await db.Reports.AnyAsync(r => r.PostId == postId && r.ReporterId == ownerId)) throw new Exception("Self-report was saved");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam", details = "Test report" }), HttpStatusCode.OK, "account can report");
+    var restriction = (await Check(await first.GetAsync("/api/auth/me"), HttpStatusCode.OK, "reported author remains signed in")).GetProperty("postingRestrictedAt").GetString();
+    if (restriction is null) throw new Exception("Post report did not restrict the account");
+    var liftPath = $"/api/moderation/accounts/{ownerId}/posting-restriction?restrictedAt={Uri.EscapeDataString(restriction)}";
+    await Check(await first.PostAsJsonAsync($"/api/posts/{otherPost}/comments", new { body = "Blocked comment" }), HttpStatusCode.Forbidden, "reported author cannot comment");
+    await Check(await first.PutAsJsonAsync($"/api/posts/{otherPost}/reaction", new { kind = "like" }), HttpStatusCode.NoContent, "reported author can react");
+    await Check(await second.DeleteAsync(liftPath), HttpStatusCode.Forbidden, "regular user cannot lift a restriction");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.Conflict, "duplicate report does not count");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "first report hides public post link");
     await Check(await second.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.NotFound, "reported activity hidden from other accounts");
@@ -394,6 +412,13 @@ try {
     await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "moderator dismisses a false report");
     await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "retrying dismissal succeeds");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "dismissing the last active report restores the public post");
+    var latestRestriction = await db.Users.Where(u => u.Id == ownerId).Select(u => u.PostingRestrictedAt).SingleAsync();
+    if (latestRestriction == null) throw new Exception("Removing a report should leave the restriction for admin review");
+    await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
+    liftPath = $"/api/moderation/accounts/{ownerId}/posting-restriction?restrictedAt={Uri.EscapeDataString(latestRestriction.Value.ToString("O"))}";
+    await Check(await third.DeleteAsync(liftPath), HttpStatusCode.NoContent, "admin lifts posting restriction");
+    if (await db.Users.AnyAsync(u => u.Id == ownerId && u.PostingRestrictedAt != null)) throw new Exception("Restriction was not lifted");
+    await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
     var selfDispute = await Check(await third.PostAsJsonAsync($"/api/account/reports/{otherPost}/dispute", new { explanation = "My removed post" }), HttpStatusCode.OK, "moderator can submit own dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{selfDispute.GetProperty("id").GetGuid()}/decision", new { accept = true, reason = "Approve myself" }), HttpStatusCode.Forbidden, "moderator cannot approve own dispute");
     if (await db.Notifications.CountAsync(n => n.UserId == ownerId && n.Kind == "dispute") != 2) throw new Exception("Dispute outcomes not notified");

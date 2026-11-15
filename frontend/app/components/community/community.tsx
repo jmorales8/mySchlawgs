@@ -271,7 +271,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
       {!mobileNavigation && accountMenu}
     </div>
       {showFeedNavigation && ready && user && (
-        <button type="button" className={layoutStyles.mobilePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>
+        <button type="button" className={layoutStyles.mobilePostButton} disabled={busy || !!user.postingRestrictedAt} aria-haspopup="dialog" onClick={openPostComposer}>
           <span aria-hidden="true">📷+</span>Post
         </button>
       )}
@@ -280,8 +280,9 @@ export default function Community({ postId, discovery, notificationCommentId, in
       {showFeedNavigation && <div className={layoutStyles.feedMenu} role="group" aria-label="Choose your feed">
           <button type="button" aria-pressed={!postId && feed === "latest"} onClick={() => navigateToFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
           <button type="button" aria-pressed={!postId && feed === "interacted"} onClick={() => navigateToFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
+          <button type="button" aria-pressed={!postId && feed === "following"} onClick={() => navigateToFeed("following")}>Following</button>
           <button type="button" aria-pressed={!postId && feed === "mine"} onClick={() => navigateToFeed("mine")}>My photos</button>
-          {ready && user && <button type="button" className={layoutStyles.sharePostButton} disabled={busy} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>}
+          {ready && user && <button type="button" className={layoutStyles.sharePostButton} disabled={busy || !!user.postingRestrictedAt} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>}
         </div>}
       <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} collapsible={mobileNavigation} />
       {mobileNavigation && accountMenu}
@@ -306,6 +307,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
         </section>
       </aside>}
       <section className={`${layoutStyles.content} ${postId ? layoutStyles.singlePost : ""}`} id="feed">
+        {user?.postingRestrictedAt && <p role="status">You can still react. Posting and commenting are paused until an admin lifts the restriction.</p>}
         {!ready && <p className={sharedStyles.muted} role="status">Getting your account…</p>}
         {(error || accountError) && !composerOpen && <ErrorToast key={error || accountError} message={error || accountError} />}{notice && <p className={sharedStyles.notice} role="status">{notice}</p>}
         {user && showFeedNavigation && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>
@@ -374,8 +376,8 @@ export default function Community({ postId, discovery, notificationCommentId, in
             <Link href="/privacy">Privacy</Link>
           </nav>
         )}
-        <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations" }[discovery] : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
-        {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} notificationCommentId={notificationCommentId} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
+        <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations" }[discovery] : feed === "following" ? "Following" : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
+        {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : feed === "following" ? "posts from schlawg bill posters you follow" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "following" ? "No posts from followed posters yet." : feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : feed === "following" ? "Open a poster’s avatar menu in Latest moments to follow them." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} notificationCommentId={notificationCommentId} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
         {!postId && ready && !feedLoading && !feedError && photos.length > 0 && (feed === "latest" || user) && <FeedEnding key={`${user?.id ?? "guest"}-${feed}`} />}
       </section>
     </div></div>

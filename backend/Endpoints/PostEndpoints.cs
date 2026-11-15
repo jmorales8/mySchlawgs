@@ -124,7 +124,10 @@ public static class PostEndpoints
         group.MapPost("/{id:guid}/comments", async (Guid id, CommentInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             if (string.IsNullOrWhiteSpace(input.Body) || input.Body.Length > 2000) return Results.BadRequest(new { message = "Write a comment between 1 and 2,000 characters." });
             var userId = Viewer(context)!.Value;
-            if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var author = await ModerationEndpoints.LockPostingAccount(db, userId, ct);
+            if (author is null) return Results.Unauthorized();
+            if (author.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
             if (!await db.Posts.AnyAsync(p => p.Id == id, ct)) return Results.NotFound();
             var photoId = input.PhotoId;
             if (input.ParentCommentId is Guid parentId) {
@@ -137,7 +140,6 @@ public static class PostEndpoints
                 return Results.BadRequest(new { message = "Choose a photo from this post for your comment." });
             var comment = new PostComment { Id = Guid.NewGuid(), PostId = id, PhotoId = photoId, ParentCommentId = input.ParentCommentId, IsReply = input.ParentCommentId != null, AuthorId = userId, Body = input.Body.Trim(), CreatedAt = DateTimeOffset.UtcNow };
             db.Comments.Add(comment);
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23503" }) {
                 return Results.Conflict(new { message = "That comment or photo was removed. Refresh and try again." });
@@ -156,13 +158,17 @@ public static class PostEndpoints
             if (string.IsNullOrWhiteSpace(input.Body) || input.Body.Length > 2000)
                 return Results.BadRequest(new { message = "Write a comment between 1 and 2,000 characters." });
             var userId = Viewer(context)!.Value;
-            if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var author = await ModerationEndpoints.LockPostingAccount(db, userId, ct);
+            if (author is null) return Results.Unauthorized();
+            if (author.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
             var comment = await db.Comments.AsNoTracking().SingleOrDefaultAsync(c => c.Id == commentId && c.PostId == id, ct);
             if (comment == null) return Results.NotFound();
             // Removing someone else's comment is a moderation action; editing is author-only.
             if (comment.AuthorId != userId) return Results.Forbid();
             var changed = await db.Comments.Where(c => c.Id == commentId && c.PostId == id && c.AuthorId == userId)
                 .ExecuteUpdateAsync(update => update.SetProperty(c => c.Body, input.Body.Trim()), ct);
+            await transaction.CommitAsync(ct);
             return changed == 0 ? Results.NotFound() : Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
 
@@ -191,6 +197,13 @@ public static class PostEndpoints
 
         group.MapDelete("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, bool? report, AppDbContext db, HttpContext context, CancellationToken ct) => {
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            AppUser? reportedAuthor = null;
+            if (report == true) {
+                var authorId = await db.Comments.Where(c => c.Id == commentId && c.PostId == id).Select(c => (Guid?)c.AuthorId).SingleOrDefaultAsync(ct);
+                if (authorId is null) return Results.NotFound();
+                reportedAuthor = await ModerationEndpoints.LockPostingAccount(db, authorId.Value, ct);
+                if (reportedAuthor is null) return Results.NotFound();
+            }
             var comment = await db.Comments.FromSqlInterpolated($"SELECT * FROM post_comments WHERE \"Id\" = {commentId} AND \"PostId\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (comment is null) return Results.NotFound();
             var userId = Viewer(context);
@@ -198,18 +211,20 @@ public static class PostEndpoints
             if (user is null) return Results.Unauthorized();
             var ownsPost = await db.Posts.AnyAsync(p => p.Id == id && p.OwnerId == userId, ct);
             if (comment.AuthorId != userId && !ownsPost && !user.IsAdmin && !user.IsModerator) return Results.Forbid();
-            if (report == true) {
+            if (reportedAuthor != null) {
                 if (comment.AuthorId == userId) return Results.Forbid();
-                var author = await db.Users.Where(u => u.Id == comment.AuthorId).Select(u => u.Username).SingleAsync(ct);
+                reportedAuthor.PostingRestrictedAt = DateTimeOffset.UtcNow;
                 db.RemovedCommentReports.Add(new RemovedCommentReport {
                     Id = comment.Id, PostId = id, PhotoId = comment.PhotoId, Body = comment.Body,
-                    AuthorUsername = author, ReporterUsername = user.Username, CreatedAt = DateTimeOffset.UtcNow
+                    AuthorUsername = reportedAuthor.Username, ReporterUsername = user.Username, CreatedAt = DateTimeOffset.UtcNow
                 });
             }
             db.Comments.Remove(comment);
             await db.SaveChangesAsync(ct);
             var removedBy = user.IsAdmin ? "an administrator" : user.IsModerator ? "a moderator" : "the post author";
-            await NotificationEndpoints.Notify(db, comment.AuthorId, userId, id, $"comment-removed:{commentId}", "comment-removed", $"Your comment was removed by {removedBy}.", ct);
+            var message = $"Your comment was removed by {removedBy}.";
+            if (reportedAuthor != null) message += " Posting and commenting are paused until an admin lifts the restriction.";
+            await NotificationEndpoints.Notify(db, comment.AuthorId, userId, id, $"comment-removed:{commentId}", "comment-removed", message, ct);
             await transaction.CommitAsync(ct);
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");

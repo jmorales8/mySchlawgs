@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type Dispatch, 
 import { api } from "../components/api";
 import { API_CHANGED, type ApiChange } from "../lib/api-events";
 
-export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; verifiedEmail: string | null; profilePhotoUrl: string | null; votingForAnimalId: string | null };
+export type User = { isAdmin: boolean; isModerator: boolean; id: string; username: string; postingRestrictedAt: string | null; verifiedEmail: string | null; profilePhotoUrl: string | null; votingForAnimalId: string | null };
 
 const AccountContext = createContext<{
   user: User | null;

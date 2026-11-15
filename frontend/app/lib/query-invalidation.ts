@@ -6,6 +6,9 @@ export function queryRefreshMode(queryPath: string, mutationPath: string): Refre
   // The account provider applies this private selection directly; post data is unchanged.
   if (mutationPath === "/api/account/vote") return "ignore";
   if (mutationPath === "/api/votes/refresh") return "ignore";
+  if (mutationPath.startsWith("/api/account/following/")) {
+    return queryPath === "/api/account/following" || queryPath === "/api/photos?feed=following" ? "refresh" : "ignore";
+  }
   if (/^\/api\/notifications(?:\/|$)/.test(mutationPath)) {
     return queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";
   }

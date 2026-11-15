@@ -513,6 +513,9 @@ namespace backend.Data.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)");
 
+                    b.Property<DateTimeOffset?>("PostingRestrictedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("ProfilePhotoId")
                         .HasColumnType("uuid");
 
@@ -869,6 +872,24 @@ namespace backend.Data.Migrations
                     b.ToTable("post_reports", (string)null);
                 });
 
+            modelBuilder.Entity("Backend.Models.PosterFollow", b =>
+                {
+                    b.Property<Guid>("FollowerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PosterId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("FollowerId", "PosterId");
+
+                    b.HasIndex("PosterId");
+
+                    b.ToTable("poster_follows", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_poster_follows_distinct_users", "\"FollowerId\" <> \"PosterId\"");
+                        });
+                });
+
             modelBuilder.Entity("Backend.Models.RemovedCommentReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1118,6 +1139,21 @@ namespace backend.Data.Migrations
                     b.HasOne("Backend.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Models.PosterFollow", b =>
+                {
+                    b.HasOne("Backend.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("FollowerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("PosterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

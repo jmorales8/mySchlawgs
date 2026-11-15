@@ -184,7 +184,8 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     {error && <div className={styles.error} role="alert">{error} <button type="button" className={styles.plain} onClick={() => void reload()}>Retry loading</button></div>}
     <div className={styles.commentDrawer} id={`conversation-${postId}`} data-open={showComments} inert={!showComments}>
       <div className={styles.commentDrawerBody}><div className={styles.comments}>
-      {userId && showCommentComposer && <CommentComposer label={photoCount > 1 ? `Comment on photo ${slideNumber}` : "Write a comment :3"} textareaRef={commentRef} value={body} onChange={setBody} busy={busy}
+      {user?.postingRestrictedAt && <p className={styles.message}>Commenting is paused until an admin lifts your restriction.</p>}
+      {userId && !user?.postingRestrictedAt && showCommentComposer && <CommentComposer label={photoCount > 1 ? `Comment on photo ${slideNumber}` : "Write a comment :3"} textareaRef={commentRef} value={body} onChange={setBody} busy={busy}
         onSubmit={async event => {
           event.preventDefault();
           if (busy || !body.trim()) return;
@@ -229,12 +230,12 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
           {(activity?.canChooseQuote || comment.canEdit || comment.canDelete) && <CommentOptions label={`Options for comment by @${comment.username}`}>
             {activity?.canChooseQuote && <button type="button" disabled={busy || quoteId === comment.id} onClick={() => void chooseQuote(comment.id)}>{quoteId === comment.id ? "Selected best quote" : photoCount > 1 ? `Choose as best quote for photo ${slideNumber}` : "Choose as best quote"}</button>}
-            {comment.canEdit && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoval(null); }}>Edit comment</button>}
+            {comment.canEdit && !user?.postingRestrictedAt && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoval(null); }}>Edit comment</button>}
             {comment.canDelete && <button type="button" disabled={busy} onClick={() => { if (user?.isAdmin && activity?.canModerate) void removeComment(comment.id); else setRemoval({ id: comment.id, report: false }); }}>Remove comment{user?.isAdmin && activity?.canModerate ? " · Admin" : ""}</button>}
             {comment.canDelete && comment.authorId !== userId && <button type="button" disabled={busy} onClick={() => setRemoval({ id: comment.id, report: true })}>Remove comment and report</button>}
           </CommentOptions>}
         </div>
-        {editingId === comment.id ? <CommentEditor body={comment.body} reply={comment.isReply} busy={busy} onCancel={() => setEditingId(null)} onSave={async updatedBody => {
+        {editingId === comment.id && !user?.postingRestrictedAt ? <CommentEditor body={comment.body} reply={comment.isReply} busy={busy} onCancel={() => setEditingId(null)} onSave={async updatedBody => {
           if (busy) return;
           setBusy(true);
           try {
@@ -257,13 +258,13 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
               try { await api(`${url}/comments/${comment.id}/reaction`, comment.myReaction === kind ? { method: "DELETE" } : { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) }); await reload(); }
               catch (e) { setError((e as Error).message); }
             }} />
-          <button type="button" className={styles.replyAction} disabled={busy} aria-expanded={replyTo?.id === comment.id} aria-controls={`reply-${postId}-${comment.id}`} onClick={() => {
+          <button type="button" className={styles.replyAction} disabled={busy || !!user?.postingRestrictedAt} aria-expanded={replyTo?.id === comment.id} aria-controls={`reply-${postId}-${comment.id}`} onClick={() => {
             if (!userId) { setNotice("Log in or create an account to reply to this comment."); return; }
             setEditingId(null); setReplyError(""); setReplyTo(replyTo?.id === comment.id ? null : comment);
           }}>Reply</button>
         </div>
             {removal?.id === comment.id && <div className={styles.confirm} role="group" aria-label="Confirm comment removal"><span>{removal.report ? "Remove this comment and save a copy for moderators?" : "Remove this comment?"}</span><button type="button" disabled={busy} onClick={() => void removeComment(comment.id, removal.report)}>{removal.report ? "Remove and report" : "Remove"}</button><button type="button" disabled={busy} onClick={() => setRemoval(null)}>Cancel</button></div>}
-        {userId && replyTo?.id === comment.id && <CommentComposer
+        {userId && !user?.postingRestrictedAt && replyTo?.id === comment.id && <CommentComposer
           id={`reply-${postId}-${comment.id}`} reply textareaRef={replyRef}
           label={`Reply to @${comment.username} · ${comment.slideNumber ? `Photo ${comment.slideNumber}` : "Post"}`}
           value={replyDrafts[comment.id] ?? ""} onChange={value => setReplyDrafts(drafts => ({ ...drafts, [comment.id]: value }))}

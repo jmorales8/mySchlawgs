@@ -158,7 +158,7 @@
   .nav .mobileAccountName { display: block; padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--foreground); font-weight: 600; overflow-wrap: anywhere; }
   .desktopFeedLabel { display: none; }
   .mobileFeedLabel { display: inline; }
-  .nav .feedMenu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--border); }
+  .nav .feedMenu { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--border); }
   .nav.nav .feedMenu button { width: 100%; min-height: 46px; padding: 10px 4px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; text-align: center; }
   .nav.nav .feedMenu button[aria-pressed=true] { background: transparent; color: var(--link); border-bottom-color: var(--accent); }
   .nav.nav .feedMenu button:hover:not(:disabled) { background: var(--soft); color: var(--link); }
@@ -228,6 +228,10 @@
     animation: bottomMenuIn 160ms ease-out both;
   }
   .nav .bottomNavigation .accountDropdownClosing { animation: bottomMenuOut 160ms ease-in both; }
+}
+@media (max-width: 480px) {
+  .nav .bottomNavigation .feedMenu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feedFrame:has(.bottomNavigation[data-active="true"]) { padding-bottom: calc(106px + env(safe-area-inset-bottom)); }
 }
 @keyframes bottomMenuIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bottomMenuOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(6px); } }

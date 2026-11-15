@@ -17,9 +17,26 @@ public static class AccountBanEndpoints
             var id = Guid.Parse(context.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
             if (!await db.Users.AnyAsync(u => u.Id == id && u.IsAdmin, context.HttpContext.RequestAborted))
-                return Results.Json(new { message = "Only administrators can ban accounts." }, statusCode: 403);
+                return Results.Json(new { message = "Only administrators can manage account restrictions." }, statusCode: 403);
             return await next(context);
         });
+
+        accounts.MapGet("/restricted", async (int? page, AppDbContext db, CancellationToken ct) =>
+        {
+            var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
+            return Results.Ok(await db.Users.AsNoTracking().Where(u => u.PostingRestrictedAt != null)
+                .OrderBy(u => u.PostingRestrictedAt).ThenBy(u => u.Id).Skip(offset).Take(20)
+                .Select(u => new { u.Id, u.Username, u.PostingRestrictedAt }).ToListAsync(ct));
+        });
+
+        accounts.MapDelete("/{id:guid}/posting-restriction", async (Guid id, DateTimeOffset restrictedAt, HttpContext context, AppDbContext db, CancellationToken ct) =>
+        {
+            var adminId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            if (id == adminId) return Results.Json(new { message = "Another admin must review your restriction." }, statusCode: 403);
+            var changed = await db.Users.Where(u => u.Id == id && u.PostingRestrictedAt == restrictedAt)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.PostingRestrictedAt, (DateTimeOffset?)null), ct);
+            return changed == 1 ? Results.NoContent() : Results.Conflict(new { message = "This restriction changed. Refresh the queue and review it again." });
+        }).RequireRateLimiting("social");
 
         accounts.MapGet("/lookup", async (string username, AppDbContext db, CancellationToken ct) =>
         {
