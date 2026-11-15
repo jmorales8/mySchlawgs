@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api";
 import SchlawgProfileDialog, { type SchlawgProfile } from "./schlawg-profile-dialog";
@@ -10,6 +10,27 @@ import styles from "./vote-leaders.module.css";
 import { useAccount } from "../../../contexts/account-context";
 
 type Summary = { updatedAt: string | null; leaders: (SchlawgProfile & { votes: number })[] };
+
+const countToastDismissalKey = "myschlawgs-vote-count-toast-dismissed";
+let countToastDismissedInMemory = false;
+
+function subscribeToCountToastDismissal(onChange: () => void) {
+  function handleStorage(event: StorageEvent) {
+    if (event.key === countToastDismissalKey || event.key === null) onChange();
+  }
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+function getCountToastDismissal() {
+  try {
+    return countToastDismissedInMemory || localStorage.getItem(countToastDismissalKey) === "1";
+  } catch {
+    return countToastDismissedInMemory;
+  }
+}
+
+function getServerCountToastDismissal() { return true; }
 
 function VoteCountStatus({ updatedAt }: { updatedAt: string }) {
   return <>Last counted <time dateTime={updatedAt}>{new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>. New votes appear after the next count.</>;
@@ -22,11 +43,18 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
   const [refreshError, setRefreshError] = useState("");
   const [notice, setNotice] = useState("");
   const [countNotice, setCountNotice] = useState<"visible" | "closing" | "dismissed">("visible");
+  const countToastDismissed = useSyncExternalStore(subscribeToCountToastDismissal, getCountToastDismissal, getServerCountToastDismissal);
   const [selected, setSelected] = useState<SchlawgProfile | null>(null);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["vote-summary"], queryFn: ({ signal }) => api<Summary>("/api/votes/summary", { signal }),
     staleTime: 60_000, refetchInterval: 60_000, retry: false,
   });
+  function dismissCountToast() {
+    countToastDismissedInMemory = true;
+    try { localStorage.setItem(countToastDismissalKey, "1"); }
+    catch { /* Keep the dismissal for this page when browser storage is unavailable. */ }
+    setCountNotice("closing");
+  }
   async function refreshTotals() {
     setRefreshing(true); setRefreshError(""); setNotice("");
     try {
@@ -74,7 +102,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
     return <section className={styles.compactSummary} aria-labelledby={heading}>
       <h2 id={heading}>Schlawg of the Week</h2>
       {isPending ? <span className={styles.compactStatus} role="status">Loading…</span> : !data ? <button className={styles.retry} onClick={() => void refetch()}>Try again</button> : data.updatedAt && data.leaders.length ? podium : <span className={styles.compactStatus}>{data.updatedAt ? "No votes yet" : "Counting votes…"}</span>}
-      {data?.updatedAt && countNotice !== "dismissed" && <div
+      {data?.updatedAt && (countNotice === "closing" || (countNotice === "visible" && !countToastDismissed)) && <div
         className={styles.countToast}
         data-closing={countNotice === "closing"}
         onAnimationEnd={() => {
@@ -82,7 +110,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
         }}
       >
         <p role="status"><VoteCountStatus updatedAt={data.updatedAt} /></p>
-        <button type="button" className={styles.dismissCountToast} disabled={countNotice === "closing"} onClick={() => setCountNotice("closing")}>Dismiss</button>
+        <button type="button" className={styles.dismissCountToast} disabled={countNotice === "closing"} onClick={dismissCountToast}>Dismiss</button>
       </div>}
       {selected && <SchlawgProfileDialog animal={selected} onClose={() => setSelected(null)} />}
     </section>;

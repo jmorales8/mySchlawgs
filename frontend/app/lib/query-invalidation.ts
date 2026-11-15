@@ -7,7 +7,7 @@ export function queryRefreshMode(queryPath: string, mutationPath: string): Refre
   if (mutationPath === "/api/account/vote") return "ignore";
   if (mutationPath === "/api/votes/refresh") return "ignore";
   if (mutationPath.startsWith("/api/account/following/")) {
-    return queryPath === "/api/account/following" || queryPath === "/api/photos?feed=following" ? "refresh" : "ignore";
+    return queryPath === "/api/account/following" || queryPath === "/api/photos?feed=following" || queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";
   }
   if (/^\/api\/notifications(?:\/|$)/.test(mutationPath)) {
     return queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";

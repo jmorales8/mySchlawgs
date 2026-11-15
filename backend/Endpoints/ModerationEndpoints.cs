@@ -34,7 +34,7 @@ public static class ModerationEndpoints
                 return Results.Conflict(new { message = "You have already reported this post." });
             db.Reports.Add(new PostReport { PostId = id, ReporterId = userId, Reason = input.Reason, Details = input.Details?.Trim() ?? "", CreatedAt = DateTimeOffset.UtcNow });
             post.ModerationVersion++;
-            if (owner != null) owner.PostingRestrictedAt = DateTimeOffset.UtcNow;
+            if (owner != null) RestrictPosting(owner);
             var count = await db.Reports.CountAsync(r => r.PostId == id && r.DismissedAt == null, ct) + 1;
             await db.SaveChangesAsync(ct);
             await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"report:{id}:{userId}", "report", $"Your post was reported for {input.Reason} and has {count} active report(s). You can see it in My photos and request a review. Posting and commenting are paused until an admin lifts the restriction.", ct);
@@ -105,5 +105,12 @@ public static class ModerationEndpoints
         }).RequireRateLimiting("social");
         DisputeEndpoints.MapDisputeEndpoints(endpoints, moderation);
         AccountBanEndpoints.MapAccountBanEndpoints(moderation);
+    }
+
+    internal static void RestrictPosting(AppUser user)
+    {
+        var now = DateTimeOffset.UtcNow;
+        user.PostingRestrictionStartedAt ??= user.PostingRestrictedAt ?? now;
+        user.PostingRestrictedAt = now;
     }
 }

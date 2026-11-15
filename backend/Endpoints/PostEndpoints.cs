@@ -213,7 +213,7 @@ public static class PostEndpoints
             if (comment.AuthorId != userId && !ownsPost && !user.IsAdmin && !user.IsModerator) return Results.Forbid();
             if (reportedAuthor != null) {
                 if (comment.AuthorId == userId) return Results.Forbid();
-                reportedAuthor.PostingRestrictedAt = DateTimeOffset.UtcNow;
+                ModerationEndpoints.RestrictPosting(reportedAuthor);
                 db.RemovedCommentReports.Add(new RemovedCommentReport {
                     Id = comment.Id, PostId = id, PhotoId = comment.PhotoId, Body = comment.Body,
                     AuthorUsername = reportedAuthor.Username, ReporterUsername = user.Username, CreatedAt = DateTimeOffset.UtcNow

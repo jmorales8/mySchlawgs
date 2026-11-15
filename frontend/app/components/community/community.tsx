@@ -307,7 +307,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
         </section>
       </aside>}
       <section className={`${layoutStyles.content} ${postId ? layoutStyles.singlePost : ""}`} id="feed">
-        {user?.postingRestrictedAt && <p role="status">You can still react. Posting and commenting are paused until an admin lifts the restriction.</p>}
+        {user?.postingRestrictedAt && <p role="status">You can still react. Posting and commenting are paused. <Link href="/account/reports">Appeal your posting restriction</Link>.</p>}
         {!ready && <p className={sharedStyles.muted} role="status">Getting your account…</p>}
         {(error || accountError) && !composerOpen && <ErrorToast key={error || accountError} message={error || accountError} />}{notice && <p className={sharedStyles.notice} role="status">{notice}</p>}
         {user && showFeedNavigation && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>

@@ -11,6 +11,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Photo> Photos => Set<Photo>();
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<PostingAppeal> PostingAppeals => Set<PostingAppeal>();
     public DbSet<PosterFollow> PosterFollows => Set<PosterFollow>();
     public DbSet<UsernameBan> UsernameBans => Set<UsernameBan>();
     public DbSet<Post> Posts => Set<Post>();
@@ -24,6 +25,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var postingAppeal = modelBuilder.Entity<PostingAppeal>();
+        postingAppeal.ToTable("posting_appeals");
+        postingAppeal.HasIndex(a => new { a.UserId, a.RestrictionStartedAt }).IsUnique();
+        postingAppeal.HasOne<AppUser>().WithMany().HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Cascade);
+        postingAppeal.Property(a => a.Explanation).HasMaxLength(2000);
+        postingAppeal.Property(a => a.DecisionReason).HasMaxLength(1000);
+
         var follow = modelBuilder.Entity<PosterFollow>();
         follow.ToTable("poster_follows", table => table.HasCheckConstraint("CK_poster_follows_distinct_users", "\"FollowerId\" <> \"PosterId\""));
         follow.HasKey(x => new { x.FollowerId, x.PosterId });

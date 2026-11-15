@@ -6,6 +6,7 @@ namespace Backend.Endpoints;
 
 public static class NotificationEndpoints
 {
+    public sealed record DigestPreference(bool Enabled);
     // Stable event keys prevent duplicate notifications from retries or like/unlike toggles.
     public static async Task Notify(AppDbContext db, Guid? recipient, Guid? actor, Guid postId, string key, string kind, string message, CancellationToken ct)
     {
@@ -31,12 +32,27 @@ public static class NotificationEndpoints
             var posts = db.Posts.Where(p => p.OwnerId == userId).Select(p => p.Id);
             var reactionPeople = await db.Reactions.Where(r => posts.Contains(r.PostId) && r.UserId != userId).Select(r => r.UserId).Distinct().CountAsync(ct);
             var commentPeople = await db.Comments.Where(c => posts.Contains(c.PostId) && c.AuthorId != userId).Select(c => c.AuthorId).Distinct().CountAsync(ct);
-            return Results.Ok(new { unreadCount, reactionPeople, commentPeople, items = items.Select(n => new {
+            var digestEnabled = await db.Users.Where(u => u.Id == userId).Select(u => u.FollowedPosterDigestEnabled).SingleOrDefaultAsync(ct);
+            var followedPostCount = 0;
+            if (digestEnabled && (page ?? 0) == 0)
+            {
+                var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+                followedPostCount = await db.Posts.CountAsync(p => p.CreatedAt >= cutoff
+                    && db.PosterFollows.Any(f => f.FollowerId == userId && f.PosterId == p.OwnerId)
+                    && !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null), ct);
+            }
+            return Results.Ok(new { unreadCount, reactionPeople, commentPeople, digestEnabled, followedPostCount, items = items.Select(n => new {
                 n.Id, n.PostId, n.Kind, n.Message, n.CreatedAt, n.ReadAt, n.removed,
                 commentId = (n.Kind is "comment" or "reply") && n.EventKey.StartsWith(n.Kind + ":", StringComparison.Ordinal)
                     && Guid.TryParse(n.EventKey.AsSpan(n.Kind.Length + 1), out var commentId) ? (Guid?)commentId : null
             }) });
         });
+        group.MapPut("/followed-poster-digest", async (DigestPreference input, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            var userId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var changed = await db.Users.Where(u => u.Id == userId)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.FollowedPosterDigestEnabled, input.Enabled), ct);
+            return changed == 0 ? Results.Unauthorized() : Results.NoContent();
+        }).RequireRateLimiting("social");
         group.MapPut("/{id:guid}/read", async (Guid id, AppDbContext db, HttpContext context, CancellationToken ct) => {
             var userId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var count = await db.Notifications.Where(n => n.Id == id && n.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(n => n.ReadAt, DateTimeOffset.UtcNow), ct);

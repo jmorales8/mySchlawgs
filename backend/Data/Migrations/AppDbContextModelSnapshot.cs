@@ -484,6 +484,9 @@ namespace backend.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<bool>("FollowedPosterDigestEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 
@@ -514,6 +517,9 @@ namespace backend.Data.Migrations
                         .HasColumnType("character varying(254)");
 
                     b.Property<DateTimeOffset?>("PostingRestrictedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("PostingRestrictionStartedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("ProfilePhotoId")
@@ -890,6 +896,41 @@ namespace backend.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Backend.Models.PostingAppeal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool?>("Accepted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Explanation")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("RestrictionStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "RestrictionStartedAt")
+                        .IsUnique();
+
+                    b.ToTable("posting_appeals", (string)null);
+                });
+
             modelBuilder.Entity("Backend.Models.RemovedCommentReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1154,6 +1195,15 @@ namespace backend.Data.Migrations
                     b.HasOne("Backend.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("PosterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Models.PostingAppeal", b =>
+                {
+                    b.HasOne("Backend.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

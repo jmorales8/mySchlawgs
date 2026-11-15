@@ -36,6 +36,7 @@ export function useApiQuery<T>(path: string, {
     loading: !ready || query.isLoading,
     error: needsLogin ? "Please log in to continue." : query.error?.message ?? "",
     refreshing: query.isFetching,
+    updatedAt: query.dataUpdatedAt,
     refresh,
   };
 }

@@ -3,7 +3,7 @@
 import { useApiQuery } from "./use-api-query";
 
 export type NotificationItem = { id: string; postId: string; kind: string; message: string; createdAt: string; readAt: string | null; removed: boolean; commentId: string | null };
-type Inbox = { unreadCount: number; reactionPeople: number; commentPeople: number; items: NotificationItem[] };
+type Inbox = { unreadCount: number; reactionPeople: number; commentPeople: number; digestEnabled: boolean; followedPostCount: number; items: NotificationItem[] };
 
 export function useNotifications(page = 0) {
   return useApiQuery<Inbox>(`/api/notifications?page=${page}`, {

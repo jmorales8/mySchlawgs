@@ -159,6 +159,12 @@ try {
     var followingFeed = await Check(await first.GetAsync("/api/photos?feed=following"), HttpStatusCode.OK, "following feed loads");
     if (followingFeed.GetArrayLength() != 1 || followingFeed[0].GetProperty("postId").GetGuid() != otherPost)
         throw new Exception("Following feed should contain only the followed poster's post");
+    var digest = await Check(await first.GetAsync("/api/notifications"), HttpStatusCode.OK, "load default digest preference");
+    if (digest.GetProperty("digestEnabled").GetBoolean()) throw new Exception("Following roundup must be opt-in");
+    await Check(await first.PutAsJsonAsync("/api/notifications/followed-poster-digest", new { enabled = true }), HttpStatusCode.NoContent, "enable followed poster roundup");
+    digest = await Check(await first.GetAsync("/api/notifications"), HttpStatusCode.OK, "load followed poster roundup");
+    if (!digest.GetProperty("digestEnabled").GetBoolean() || digest.GetProperty("followedPostCount").GetInt32() != 1)
+        throw new Exception("Following roundup should count the followed poster's recent post once");
     await Check(await first.DeleteAsync(followPath), HttpStatusCode.NoContent, "unfollow a poster");
     if ((await Check(await first.GetAsync("/api/photos?feed=following"), HttpStatusCode.OK, "following feed reloads")).GetArrayLength() != 0)
         throw new Exception("Unfollowed poster remains in the following feed");
@@ -310,6 +316,8 @@ try {
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam", details = "Test report" }), HttpStatusCode.OK, "account can report");
     var restriction = (await Check(await first.GetAsync("/api/auth/me"), HttpStatusCode.OK, "reported author remains signed in")).GetProperty("postingRestrictedAt").GetString();
     if (restriction is null) throw new Exception("Post report did not restrict the account");
+    await Check(await first.PostAsJsonAsync("/api/account/posting-appeal", new { explanation = "Please review this restriction." }), HttpStatusCode.NoContent, "restricted account submits appeal");
+    await Check(await first.PostAsJsonAsync("/api/account/posting-appeal", new { explanation = "Duplicate appeal." }), HttpStatusCode.Conflict, "duplicate posting appeal rejected");
     var liftPath = $"/api/moderation/accounts/{ownerId}/posting-restriction?restrictedAt={Uri.EscapeDataString(restriction)}";
     await Check(await first.PostAsJsonAsync($"/api/posts/{otherPost}/comments", new { body = "Blocked comment" }), HttpStatusCode.Forbidden, "reported author cannot comment");
     await Check(await first.PutAsJsonAsync($"/api/posts/{otherPost}/reaction", new { kind = "like" }), HttpStatusCode.NoContent, "reported author can react");
@@ -415,9 +423,14 @@ try {
     var latestRestriction = await db.Users.Where(u => u.Id == ownerId).Select(u => u.PostingRestrictedAt).SingleAsync();
     if (latestRestriction == null) throw new Exception("Removing a report should leave the restriction for admin review");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
-    liftPath = $"/api/moderation/accounts/{ownerId}/posting-restriction?restrictedAt={Uri.EscapeDataString(latestRestriction.Value.ToString("O"))}";
-    await Check(await third.DeleteAsync(liftPath), HttpStatusCode.NoContent, "admin lifts posting restriction");
+    var restrictions = await Check(await third.GetAsync("/api/moderation/accounts/restricted"), HttpStatusCode.OK, "admin sees posting appeals in the restrictions queue");
+    var queuedAppeal = restrictions.EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == ownerId).GetProperty("appeal");
+    var appealId = queuedAppeal.GetProperty("id").GetGuid();
+    var appealPath = $"/api/moderation/accounts/{ownerId}/posting-appeal/{appealId}?restrictedAt={Uri.EscapeDataString(latestRestriction.Value.ToString("O"))}";
+    await Check(await third.PostAsJsonAsync(appealPath, new { accept = true, reason = "Reviewed the reports." }), HttpStatusCode.NoContent, "admin accepts appeal and lifts posting restriction");
     if (await db.Users.AnyAsync(u => u.Id == ownerId && u.PostingRestrictedAt != null)) throw new Exception("Restriction was not lifted");
+    var appealStatus = await Check(await first.GetAsync("/api/account/posting-appeal"), HttpStatusCode.OK, "author sees appeal decision");
+    if (!appealStatus.GetProperty("appeal").GetProperty("accepted").GetBoolean()) throw new Exception("Appeal decision was not saved");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
     var selfDispute = await Check(await third.PostAsJsonAsync($"/api/account/reports/{otherPost}/dispute", new { explanation = "My removed post" }), HttpStatusCode.OK, "moderator can submit own dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{selfDispute.GetProperty("id").GetGuid()}/decision", new { accept = true, reason = "Approve myself" }), HttpStatusCode.Forbidden, "moderator cannot approve own dispute");
