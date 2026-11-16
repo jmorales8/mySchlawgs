@@ -308,37 +308,33 @@ try {
     if (!await db.Comments.AnyAsync(c => c.Id == replyId && c.ParentCommentId == null && c.IsReply) || !await db.Comments.AnyAsync(c => c.Id == nested.GetProperty("id").GetGuid())) throw new Exception("Parent deletion damaged replies");
 
     // Reports are unique per account and moderation checks current database permissions.
+    var reportedComment = (await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/comments", new { body = "Comment to review", photoId = id }), HttpStatusCode.Created, "create reported comment fixture")).GetProperty("id").GetGuid();
+    var commentReportPath = $"/api/posts/{postId}/comments/{reportedComment}/reports";
+    var activityPath = $"/api/posts/{postId}/activity";
+    bool ContainsReportedComment(JsonElement activity) => activity.GetProperty("comments").EnumerateArray().Any(c => c.GetProperty("id").GetGuid() == reportedComment);
+    await Check(await first.PostAsync(commentReportPath, null), HttpStatusCode.Forbidden, "cannot report own comment");
+    await Check(await second.PostAsync(commentReportPath, null), HttpStatusCode.NoContent, "any signed-in reader can report a comment");
+    if (ContainsReportedComment(await Check(await second.GetAsync(activityPath), HttpStatusCode.OK, "reporter's conversation loads")))
+        throw new Exception("Reported comment remains visible to reporter");
+    await Check(await second.PostAsync(commentReportPath, null), HttpStatusCode.Conflict, "duplicate comment report rejected");
+    await Check(await third.PostAsync(commentReportPath, null), HttpStatusCode.NoContent, "second distinct comment report");
+    if (!ContainsReportedComment(await Check(await anonymous.GetAsync(activityPath), HttpStatusCode.OK, "public conversation loads after two reports")))
+        throw new Exception("Comment hidden from community before three reports");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
     await Check(await anonymous.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.Unauthorized, "report requires sign-in");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "invalid" }), HttpStatusCode.BadRequest, "report category validated");
     await Check(await first.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.Forbidden, "owner cannot report own post");
     if (await db.Reports.AnyAsync(r => r.PostId == postId && r.ReporterId == ownerId)) throw new Exception("Self-report was saved");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam", details = "Test report" }), HttpStatusCode.OK, "account can report");
-    var restriction = (await Check(await first.GetAsync("/api/auth/me"), HttpStatusCode.OK, "reported author remains signed in")).GetProperty("postingRestrictedAt").GetString();
-    if (restriction is null) throw new Exception("Post report did not restrict the account");
-    await Check(await first.PostAsJsonAsync("/api/account/posting-appeal", new { explanation = "Please review this restriction." }), HttpStatusCode.NoContent, "restricted account submits appeal");
-    await Check(await first.PostAsJsonAsync("/api/account/posting-appeal", new { explanation = "Duplicate appeal." }), HttpStatusCode.Conflict, "duplicate posting appeal rejected");
-    var liftPath = $"/api/moderation/accounts/{ownerId}/posting-restriction?restrictedAt={Uri.EscapeDataString(restriction)}";
-    await Check(await first.PostAsJsonAsync($"/api/posts/{otherPost}/comments", new { body = "Blocked comment" }), HttpStatusCode.Forbidden, "reported author cannot comment");
-    await Check(await first.PutAsJsonAsync($"/api/posts/{otherPost}/reaction", new { kind = "like" }), HttpStatusCode.NoContent, "reported author can react");
-    await Check(await second.DeleteAsync(liftPath), HttpStatusCode.Forbidden, "regular user cannot lift a restriction");
+    var accountAfterReport = await Check(await first.GetAsync("/api/auth/me"), HttpStatusCode.OK, "reported author remains signed in");
+    if (accountAfterReport.GetProperty("postingRestrictedAt").ValueKind != JsonValueKind.Null) throw new Exception("Reports must not pause the author's account");
+    await Check(await first.PostAsJsonAsync($"/api/posts/{otherPost}/comments", new { body = "Still able to comment", photoId = otherUpload[0].GetProperty("id").GetGuid() }), HttpStatusCode.Created, "reported author can still comment");
     await Check(await second.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.Conflict, "duplicate report does not count");
-    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "first report hides public post link");
-    await Check(await second.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.NotFound, "reported activity hidden from other accounts");
-    await Check(await anonymous.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "first report hides direct image");
-    using var pendingImage = await first.GetAsync($"/api/photos/{id}");
-    if (pendingImage.StatusCode != HttpStatusCode.OK || !(await pendingImage.Content.ReadAsByteArrayAsync()).SequenceEqual(cleanPng)) throw new Exception("Author cannot view reported image");
-    Console.WriteLine("PASS author can view reported image"); passed++;
-    var pendingPost = await Check(await first.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "author can open reported post");
-    if (!pendingPost[0].GetProperty("isUnderReview").GetBoolean()) throw new Exception("Missing pending review status");
-    var pendingMine = await Check(await first.GetAsync("/api/photos?feed=mine"), HttpStatusCode.OK, "reported post stays in My photos");
-    if (!pendingMine.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId && p.GetProperty("isUnderReview").GetBoolean())) throw new Exception("Reported post missing from author's uploads");
-    foreach (var client in new[] { anonymous, first, second }) {
-        var publicFeed = await Check(await client.GetAsync("/api/photos"), HttpStatusCode.OK, "reported post absent from latest feed for all viewers");
-        if (publicFeed.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Reported post leaked to public feed");
-    }
-    var pendingFavorites = await Check(await first.GetAsync("/api/photos?feed=interacted"), HttpStatusCode.OK, "reported post hidden from favorites");
-    if (pendingFavorites.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Reported post leaked to favorites");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "one report leaves the public post visible");
+    await Check(await second.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.NotFound, "reported activity hidden from the reporter");
+    await Check(await second.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "reported image hidden from the reporter");
+    var reporterFeed = await Check(await second.GetAsync("/api/photos"), HttpStatusCode.OK, "reporter's feed loads");
+    if (reporterFeed.EnumerateArray().Any(p => p.GetProperty("postId").GetGuid() == postId)) throw new Exception("Reported post remains in reporter's feed");
     await Check(await second.GetAsync("/api/moderation/reports"), HttpStatusCode.Forbidden, "reports private to moderators");
     await Check(await anonymous.GetAsync("/api/moderation/reports"), HttpStatusCode.Unauthorized, "guest moderation denied");
     await Check(await third.PostAsJsonAsync($"/api/moderation/posts/{otherPost}/remove", new { reason = "Test" }), HttpStatusCode.Forbidden, "ordinary owner cannot force moderation removal");
@@ -358,12 +354,29 @@ try {
     for (var i = 3; i < names.Length; i++) {
         using var reporter = Client();
         await Check(await reporter.PostAsJsonAsync("/api/auth/login", new { username = names[i], password }), HttpStatusCode.OK, "reporter login");
+        if (i == 3) {
+            await Check(await reporter.PostAsync(commentReportPath, null), HttpStatusCode.NoContent, "third distinct comment report");
+            if (ContainsReportedComment(await Check(await anonymous.GetAsync(activityPath), HttpStatusCode.OK, "public conversation loads after three reports")))
+                throw new Exception("Comment remains public after three reports");
+            var restore = $"/api/moderation/comments/{reportedComment}/restore";
+            await Check(await reporter.PostAsync(restore, null), HttpStatusCode.Forbidden, "ordinary reader cannot restore a reported comment");
+            await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, true));
+            await Check(await third.PostAsync(restore, null), HttpStatusCode.NoContent, "moderator restores reported comment");
+            await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsModerator, false));
+            if (!ContainsReportedComment(await Check(await anonymous.GetAsync(activityPath), HttpStatusCode.OK, "public conversation loads after restoration")))
+                throw new Exception("Restored comment remains hidden from community");
+        }
         if (i == names.Length - 1) {
             await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "reported post stays hidden before moderator decision");
             var responses = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => reporter.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" })));
             if (responses.Count(r => r.StatusCode == HttpStatusCode.OK) != 1 || responses.Count(r => r.StatusCode == HttpStatusCode.Conflict) != 1) throw new Exception("Concurrent report uniqueness failed");
             foreach (var response in responses) response.Dispose();
         } else await Check(await reporter.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "spam" }), HttpStatusCode.OK, "distinct report counted");
+        if (i == 3) await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "post remains public after two reports");
+        if (i == 4) {
+            await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "third report hides the post from the community");
+            await Check(await anonymous.GetAsync($"/api/photos/{id}"), HttpStatusCode.NotFound, "third report hides the public image");
+        }
     }
     if (await db.Reports.CountAsync(r => r.PostId == postId) != 11 || !await db.Posts.IgnoreQueryFilters().AnyAsync(p => p.Id == postId && p.RemovedAt == null && p.RemovedById == null)) throw new Exception("Reports must await a moderator, without automatic removal");
     await Check(await first.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "11 reports still preserves author access pending review");
@@ -411,7 +424,8 @@ try {
     if (await db.Reports.AnyAsync(r => r.PostId == postId && r.DismissedAt == null)) throw new Exception("Accepted dispute left active reports");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{disputeId}/decision", new { accept = false, reason = "Overwrite decision" }), HttpStatusCode.Conflict, "review decision cannot be overwritten");
     await Check(await third.PostAsJsonAsync($"/api/posts/{postId}/reports", new { reason = "other" }), HttpStatusCode.OK, "new report after restoration");
-    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "new active report hides restored post again");
+    await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "one new report leaves the restored post public");
+    await Check(await third.GetAsync($"/api/posts/{postId}"), HttpStatusCode.NotFound, "one new report hides the restored post from its reporter");
     var newDispute = await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "New report to review" }), HttpStatusCode.OK, "new reports allow new dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{newDispute.GetProperty("id").GetGuid()}/decision", new { accept = false, reason = "Report remains valid" }), HttpStatusCode.NoContent, "moderator rejects dispute with explanation");
     await Check(await first.PostAsJsonAsync($"/api/account/reports/{postId}/dispute", new { explanation = "Repeat same rejected dispute" }), HttpStatusCode.Conflict, "same rejected reports cannot be appealed repeatedly");
@@ -420,18 +434,6 @@ try {
     await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "moderator dismisses a false report");
     await Check(await third.PostAsync(dismissReportPath, null), HttpStatusCode.NoContent, "retrying dismissal succeeds");
     await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "dismissing the last active report restores the public post");
-    var latestRestriction = await db.Users.Where(u => u.Id == ownerId).Select(u => u.PostingRestrictedAt).SingleAsync();
-    if (latestRestriction == null) throw new Exception("Removing a report should leave the restriction for admin review");
-    await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
-    var restrictions = await Check(await third.GetAsync("/api/moderation/accounts/restricted"), HttpStatusCode.OK, "admin sees posting appeals in the restrictions queue");
-    var queuedAppeal = restrictions.EnumerateArray().Single(u => u.GetProperty("id").GetGuid() == ownerId).GetProperty("appeal");
-    var appealId = queuedAppeal.GetProperty("id").GetGuid();
-    var appealPath = $"/api/moderation/accounts/{ownerId}/posting-appeal/{appealId}?restrictedAt={Uri.EscapeDataString(latestRestriction.Value.ToString("O"))}";
-    await Check(await third.PostAsJsonAsync(appealPath, new { accept = true, reason = "Reviewed the reports." }), HttpStatusCode.NoContent, "admin accepts appeal and lifts posting restriction");
-    if (await db.Users.AnyAsync(u => u.Id == ownerId && u.PostingRestrictedAt != null)) throw new Exception("Restriction was not lifted");
-    var appealStatus = await Check(await first.GetAsync("/api/account/posting-appeal"), HttpStatusCode.OK, "author sees appeal decision");
-    if (!appealStatus.GetProperty("appeal").GetProperty("accepted").GetBoolean()) throw new Exception("Appeal decision was not saved");
-    await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, false));
     var selfDispute = await Check(await third.PostAsJsonAsync($"/api/account/reports/{otherPost}/dispute", new { explanation = "My removed post" }), HttpStatusCode.OK, "moderator can submit own dispute");
     await Check(await third.PostAsJsonAsync($"/api/moderation/disputes/{selfDispute.GetProperty("id").GetGuid()}/decision", new { accept = true, reason = "Approve myself" }), HttpStatusCode.Forbidden, "moderator cannot approve own dispute");
     if (await db.Notifications.CountAsync(n => n.UserId == ownerId && n.Kind == "dispute") != 2) throw new Exception("Dispute outcomes not notified");

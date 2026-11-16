@@ -2,6 +2,7 @@ namespace Backend.Models;
 
 public sealed class Post
 {
+    public bool HiddenByReports { get; set; }
     public int ModerationVersion { get; set; }
     public DateTimeOffset? RemovedAt { get; set; }
     public Guid? RemovedById { get; set; }
@@ -32,6 +33,7 @@ public sealed class PostReaction
 
 public sealed class PostComment
 {
+    public bool HiddenByReports { get; set; }
     public Guid? ParentCommentId { get; set; }
     public bool IsReply { get; set; }
     public Guid? PhotoId { get; set; }
@@ -42,6 +44,14 @@ public sealed class PostComment
     public AppUser Author { get; set; } = null!;
     public required string Body { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+}
+
+public sealed class CommentReport
+{
+    public Guid CommentId { get; set; }
+    public Guid ReporterId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? DismissedAt { get; set; }
 }
 
 public sealed class CommentLike

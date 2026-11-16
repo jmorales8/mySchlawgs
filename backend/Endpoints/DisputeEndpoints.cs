@@ -17,14 +17,14 @@ public static class DisputeEndpoints
         own.AddEndpointFilter(async (context, next) => { context.HttpContext.Response.Headers.CacheControl = "no-store"; return await next(context); });
         own.MapGet("/", async (int? page, Guid? postId, AppDbContext db, HttpContext context, CancellationToken ct) => {
             var userId = Viewer(context);
-            return Results.Ok(await db.Posts.IgnoreQueryFilters().AsSplitQuery().Where(p => p.OwnerId == userId && (postId == null || p.Id == postId) && (p.RemovedAt != null || db.Reports.Any(r => r.PostId == p.Id) || db.Disputes.Any(d => d.PostId == p.Id)))
+            return Results.Ok(await db.Posts.IgnoreQueryFilters().AsSplitQuery().Where(p => p.OwnerId == userId && (postId == null || p.Id == postId) && (p.RemovedAt != null || p.HiddenByReports || db.Reports.Any(r => r.PostId == p.Id) || db.Disputes.Any(d => d.PostId == p.Id)))
                 .OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Id).Skip(Math.Clamp(page ?? 0, 0, 100000) * 20).Take(20)
                 .Select(p => new {
-                    p.Id, p.RemovedAt, p.RemovalReason,
+                    p.Id, p.RemovedAt, p.RemovalReason, p.HiddenByReports,
                     reportCount = db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null),
                     reasons = db.Reports.Where(r => r.PostId == p.Id && r.DismissedAt == null).Select(r => r.Reason).Distinct().ToList(),
                     photos = db.Photos.IgnoreQueryFilters().Where(photo => photo.PostId == p.Id).OrderBy(photo => photo.BatchPosition).Select(photo => new { photo.Id, photo.Description }).ToList(),
-                    canDispute = (p.RemovedAt != null || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)) && !db.Disputes.Any(d => d.PostId == p.Id && (d.Status == "pending" || d.Version == p.ModerationVersion)),
+                    canDispute = (p.RemovedAt != null || p.HiddenByReports || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)) && !db.Disputes.Any(d => d.PostId == p.Id && (d.Status == "pending" || d.Version == p.ModerationVersion)),
                     disputes = db.Disputes.Where(d => d.PostId == p.Id).OrderByDescending(d => d.CreatedAt).Select(d => new { d.Id, d.Status, d.Explanation, d.DecisionReason, d.CreatedAt }).ToList()
                 }).ToListAsync(ct));
         });
@@ -38,7 +38,7 @@ public static class DisputeEndpoints
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").IgnoreQueryFilters().SingleOrDefaultAsync(ct);
             if (post == null || post.OwnerId != Viewer(context)) return Results.NotFound();
-            if (post.RemovedAt == null && !await db.Reports.AnyAsync(r => r.PostId == id && r.DismissedAt == null, ct)) return Results.BadRequest(new { message = "This post has no active reports or takedown to dispute." });
+            if (post.RemovedAt == null && !post.HiddenByReports && !await db.Reports.AnyAsync(r => r.PostId == id && r.DismissedAt == null, ct)) return Results.BadRequest(new { message = "This post has no active reports or takedown to dispute." });
             if (await db.Disputes.AnyAsync(d => d.PostId == id && (d.Status == "pending" || d.Version == post.ModerationVersion), ct)) return Results.Conflict(new { message = "A dispute already exists for these reports. You can submit another if new reports or a new takedown occur after review." });
             var dispute = new PostDispute { Id = Guid.NewGuid(), PostId = id, Version = post.ModerationVersion, Explanation = input.Explanation.Trim(), CreatedAt = DateTimeOffset.UtcNow };
             db.Disputes.Add(dispute); await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct);
@@ -61,6 +61,7 @@ public static class DisputeEndpoints
             if (input.Accept) {
                 await db.Reports.Where(r => r.PostId == post.Id && r.DismissedAt == null).ExecuteUpdateAsync(s => s.SetProperty(r => r.DismissedAt, DateTimeOffset.UtcNow), ct);
                 post.RemovedAt = null; post.RemovedById = null; post.RemovalReason = null;
+                post.HiddenByReports = false;
             }
             await db.SaveChangesAsync(ct);
             await NotificationEndpoints.Notify(db, post.OwnerId, null, post.Id, $"dispute:{id}", "dispute", input.Accept ? "Your dispute was accepted. The reports were dismissed and your post is available again." : "Your dispute was rejected. View the moderator’s explanation in your reports page.", ct);

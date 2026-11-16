@@ -7,6 +7,16 @@ namespace Backend.Endpoints;
 public static class NotificationEndpoints
 {
     public sealed record DigestPreference(bool Enabled);
+
+    internal static async Task NotifyModerators(AppDbContext db, Guid? authorId, Guid reporterId, Guid postId, string key, string message, CancellationToken ct)
+    {
+        await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO notifications ("Id", "UserId", "PostId", "EventKey", "Kind", "Message", "CreatedAt")
+            SELECT gen_random_uuid(), "Id", {postId}, {key}, 'moderation-report', {message}, {DateTimeOffset.UtcNow}
+            FROM users WHERE ("IsAdmin" OR "IsModerator") AND "Id" <> {reporterId} AND "Id" IS DISTINCT FROM {authorId}
+            ON CONFLICT ("UserId", "EventKey") DO NOTHING
+            """, ct);
+    }
     // Stable event keys prevent duplicate notifications from retries or like/unlike toggles.
     public static async Task Notify(AppDbContext db, Guid? recipient, Guid? actor, Guid postId, string key, string kind, string message, CancellationToken ct)
     {
@@ -37,9 +47,10 @@ public static class NotificationEndpoints
             if (digestEnabled && (page ?? 0) == 0)
             {
                 var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+                var hidden = ReportVisibility.HiddenPosts(db, userId);
                 followedPostCount = await db.Posts.CountAsync(p => p.CreatedAt >= cutoff
                     && db.PosterFollows.Any(f => f.FollowerId == userId && f.PosterId == p.OwnerId)
-                    && !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null), ct);
+                    && !hidden.Contains(p.Id), ct);
             }
             return Results.Ok(new { unreadCount, reactionPeople, commentPeople, digestEnabled, followedPostCount, items = items.Select(n => new {
                 n.Id, n.PostId, n.Kind, n.Message, n.CreatedAt, n.ReadAt, n.removed,

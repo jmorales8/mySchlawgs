@@ -19,14 +19,14 @@ public static class PostEndpoints
         var group = endpoints.MapGroup("/api/posts");
         group.AddEndpointFilter(async (context, next) => {
             context.HttpContext.Response.Headers.CacheControl = "no-store";
-            // Reported posts and their activity are private to their author until reviewed.
-            // Moderators use the separate moderation queue and photo endpoints.
+            // Authors keep access to their own quarantined posts for review and disputes.
             if (context.HttpContext.Request.RouteValues.TryGetValue("id", out var value)
                 && Guid.TryParse(value?.ToString(), out var postId)) {
                 var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                 var viewer = Viewer(context.HttpContext);
+                var hidden = ReportVisibility.HiddenPosts(db, viewer);
                 if (!await db.Posts.AnyAsync(p => p.Id == postId && ((viewer != null && p.OwnerId == viewer)
-                    || !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)), context.HttpContext.RequestAborted))
+                    || !hidden.Contains(p.Id)), context.HttpContext.RequestAborted))
                     return Results.NotFound(new { message = "This post is no longer publicly available." });
             }
             return await next(context);
@@ -36,14 +36,16 @@ public static class PostEndpoints
                 return Results.BadRequest(new { message = "Choose Popular, Niche, or Relevant." });
             var viewerId = Viewer(context);
             var since = DateTimeOffset.UtcNow.AddDays(-7);
+            var hidden = ReportVisibility.HiddenPosts(db, viewerId);
+            var visibleComments = ReportVisibility.VisibleComments(db, viewerId);
             var candidates = db.Posts.AsNoTracking().Where(p => p.OwnerId != null
-                && !db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null)
+                && !hidden.Contains(p.Id)
                 && (viewerId == null || p.OwnerId != viewerId) && (excludePostId == null || p.Id != excludePostId)
                 && db.Photos.Any(photo => photo.PostId == p.Id && !photo.IsProfilePhoto));
             candidates = category switch {
-                "popular" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + db.Comments.Count(c => c.PostId == p.Id) >= 5),
-                "niche" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + db.Comments.Count(c => c.PostId == p.Id) < 5),
-                _ => candidates.Where(p => db.Comments.Any(c => c.PostId == p.Id && c.CreatedAt >= since))
+                "popular" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + visibleComments.Count(c => c.PostId == p.Id) >= 5),
+                "niche" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + visibleComments.Count(c => c.PostId == p.Id) < 5),
+                _ => candidates.Where(p => visibleComments.Any(c => c.PostId == p.Id && c.CreatedAt >= since))
             };
             var picked = await candidates.OrderBy(p => EF.Functions.Random()).Select(p => new { postId = p.Id }).FirstOrDefaultAsync(ct);
             return picked is null ? Results.NotFound(new { message = "No other posts match this choice yet. Try another category." }) : Results.Ok(picked);
@@ -57,7 +59,7 @@ public static class PostEndpoints
                 .Select(p => new PhotoResponse(p.Id, p.FileName, p.ContentType, p.Size, p.UploadedAt, $"/api/photos/{p.Id}", p.Description, p.OwnerId,
                     p.Owner == null ? null : p.Owner.Username,
                     p.Owner == null || p.Owner.ProfilePhotoId == null ? null : $"/api/photos/{p.Owner.ProfilePhotoId}", p.BatchId, p.BatchPosition, p.PostId,
-                    db.Reports.Any(r => r.PostId == p.PostId && r.DismissedAt == null), p.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
+                    db.Posts.Any(post => post.Id == p.PostId && post.HiddenByReports), p.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
                 db.AnimalProfiles.Where(animal => p.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
                     .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
                     .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
@@ -73,7 +75,8 @@ public static class PostEndpoints
             var admin = viewerId != null && await db.Users.AnyAsync(u => u.Id == viewerId && (u.IsAdmin || u.IsModerator), ct);
             var reactions = await db.Reactions.AsNoTracking().Where(r => r.PostId == id).OrderBy(r => r.CreatedAt)
                 .Select(r => new { r.UserId, r.User.Username, r.Kind }).ToListAsync(ct);
-            var comments = await db.Comments.AsNoTracking().Where(c => c.PostId == id).OrderBy(c => c.CreatedAt).ThenBy(c => c.Id)
+            var visibleComments = ReportVisibility.VisibleComments(db, viewerId);
+            var comments = await visibleComments.AsNoTracking().Where(c => c.PostId == id).OrderBy(c => c.CreatedAt).ThenBy(c => c.Id)
                 .Select(c => new { c.Id, c.AuthorId, c.Author.Username, c.Body, c.CreatedAt, c.PhotoId, c.ParentCommentId, c.IsReply,
                     likeCount = db.CommentLikes.Count(l => l.CommentId == c.Id && l.Kind == "like"),
                     likedByMe = viewerId != null && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == viewerId && l.Kind == "like"),
@@ -90,7 +93,7 @@ public static class PostEndpoints
                     profilePhotoUrl = c.Author.ProfilePhotoId == null ? null : $"/api/photos/{c.Author.ProfilePhotoId}",
                     canEdit = viewerId != null && c.AuthorId == viewerId,
                     canDelete = viewerId != null && (c.AuthorId == viewerId || post.OwnerId == viewerId || admin) }).ToListAsync(ct);
-            var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && p.BestQuoteCommentId != null)
+            var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && visibleComments.Any(c => c.Id == p.BestQuoteCommentId))
                 .Select(p => new { photoId = p.Id, commentId = p.BestQuoteCommentId }).ToListAsync(ct);
             var reportedByMe = viewerId != null && await db.Reports.AnyAsync(r => r.PostId == id && r.ReporterId == viewerId, ct);
             return Results.Ok(new { reactions, comments, bestQuotes, canChooseQuote = viewerId != null && post.OwnerId == viewerId, canModerate = admin && post.OwnerId != viewerId, reportedByMe });
@@ -124,14 +127,11 @@ public static class PostEndpoints
         group.MapPost("/{id:guid}/comments", async (Guid id, CommentInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             if (string.IsNullOrWhiteSpace(input.Body) || input.Body.Length > 2000) return Results.BadRequest(new { message = "Write a comment between 1 and 2,000 characters." });
             var userId = Viewer(context)!.Value;
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            var author = await ModerationEndpoints.LockPostingAccount(db, userId, ct);
-            if (author is null) return Results.Unauthorized();
-            if (author.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
+            if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
             if (!await db.Posts.AnyAsync(p => p.Id == id, ct)) return Results.NotFound();
             var photoId = input.PhotoId;
             if (input.ParentCommentId is Guid parentId) {
-                var parent = await db.Comments.AsNoTracking().SingleOrDefaultAsync(c => c.Id == parentId && c.PostId == id, ct);
+                var parent = await ReportVisibility.VisibleComments(db, userId).AsNoTracking().SingleOrDefaultAsync(c => c.Id == parentId && c.PostId == id, ct);
                 if (parent == null) return Results.BadRequest(new { message = "The comment you are replying to is no longer available." });
                 // Replies keep the original photo context even if the carousel has moved.
                 photoId = parent.PhotoId;
@@ -140,6 +140,7 @@ public static class PostEndpoints
                 return Results.BadRequest(new { message = "Choose a photo from this post for your comment." });
             var comment = new PostComment { Id = Guid.NewGuid(), PostId = id, PhotoId = photoId, ParentCommentId = input.ParentCommentId, IsReply = input.ParentCommentId != null, AuthorId = userId, Body = input.Body.Trim(), CreatedAt = DateTimeOffset.UtcNow };
             db.Comments.Add(comment);
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException { SqlState: "23503" }) {
                 return Results.Conflict(new { message = "That comment or photo was removed. Refresh and try again." });
@@ -158,17 +159,13 @@ public static class PostEndpoints
             if (string.IsNullOrWhiteSpace(input.Body) || input.Body.Length > 2000)
                 return Results.BadRequest(new { message = "Write a comment between 1 and 2,000 characters." });
             var userId = Viewer(context)!.Value;
-            await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            var author = await ModerationEndpoints.LockPostingAccount(db, userId, ct);
-            if (author is null) return Results.Unauthorized();
-            if (author.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
+            if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
             var comment = await db.Comments.AsNoTracking().SingleOrDefaultAsync(c => c.Id == commentId && c.PostId == id, ct);
             if (comment == null) return Results.NotFound();
             // Removing someone else's comment is a moderation action; editing is author-only.
             if (comment.AuthorId != userId) return Results.Forbid();
             var changed = await db.Comments.Where(c => c.Id == commentId && c.PostId == id && c.AuthorId == userId)
                 .ExecuteUpdateAsync(update => update.SetProperty(c => c.Body, input.Body.Trim()), ct);
-            await transaction.CommitAsync(ct);
             return changed == 0 ? Results.NotFound() : Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
 
@@ -177,7 +174,7 @@ public static class PostEndpoints
             if (post is null) return Results.NotFound();
             if (post.OwnerId != Viewer(context)) return Results.Forbid();
             if (!await db.Photos.AnyAsync(p => p.Id == photoId && p.PostId == id && !p.IsProfilePhoto, ct)) return Results.NotFound();
-            if (input.CommentId != null && !await db.Comments.AnyAsync(c => c.Id == input.CommentId && c.PostId == id, ct))
+            if (input.CommentId != null && !await ReportVisibility.VisibleComments(db, Viewer(context)).AnyAsync(c => c.Id == input.CommentId && c.PostId == id, ct))
                 return Results.BadRequest(new { message = "Choose a comment from this post." });
             // One nullable reference per photo makes replacement atomic and optional.
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -195,36 +192,23 @@ public static class PostEndpoints
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
 
-        group.MapDelete("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, bool? report, AppDbContext db, HttpContext context, CancellationToken ct) => {
+        CommentReportEndpoints.MapSubmission(group);
+        group.MapDelete("/{id:guid}/comments/{commentId:guid}", async (Guid id, Guid commentId, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            if (string.Equals(context.Request.Query["report"], "true", StringComparison.OrdinalIgnoreCase))
+                return Results.BadRequest(new { message = "Refresh the page to use the current report action." });
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            AppUser? reportedAuthor = null;
-            if (report == true) {
-                var authorId = await db.Comments.Where(c => c.Id == commentId && c.PostId == id).Select(c => (Guid?)c.AuthorId).SingleOrDefaultAsync(ct);
-                if (authorId is null) return Results.NotFound();
-                reportedAuthor = await ModerationEndpoints.LockPostingAccount(db, authorId.Value, ct);
-                if (reportedAuthor is null) return Results.NotFound();
-            }
             var comment = await db.Comments.FromSqlInterpolated($"SELECT * FROM post_comments WHERE \"Id\" = {commentId} AND \"PostId\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (comment is null) return Results.NotFound();
             var userId = Viewer(context);
             var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId, ct);
             if (user is null) return Results.Unauthorized();
+            if (comment.HiddenByReports) return Results.Conflict(new { message = "This comment is awaiting moderator review." });
             var ownsPost = await db.Posts.AnyAsync(p => p.Id == id && p.OwnerId == userId, ct);
             if (comment.AuthorId != userId && !ownsPost && !user.IsAdmin && !user.IsModerator) return Results.Forbid();
-            if (reportedAuthor != null) {
-                if (comment.AuthorId == userId) return Results.Forbid();
-                ModerationEndpoints.RestrictPosting(reportedAuthor);
-                db.RemovedCommentReports.Add(new RemovedCommentReport {
-                    Id = comment.Id, PostId = id, PhotoId = comment.PhotoId, Body = comment.Body,
-                    AuthorUsername = reportedAuthor.Username, ReporterUsername = user.Username, CreatedAt = DateTimeOffset.UtcNow
-                });
-            }
             db.Comments.Remove(comment);
             await db.SaveChangesAsync(ct);
             var removedBy = user.IsAdmin ? "an administrator" : user.IsModerator ? "a moderator" : "the post author";
-            var message = $"Your comment was removed by {removedBy}.";
-            if (reportedAuthor != null) message += " Posting and commenting are paused until an admin lifts the restriction.";
-            await NotificationEndpoints.Notify(db, comment.AuthorId, userId, id, $"comment-removed:{commentId}", "comment-removed", message, ct);
+            await NotificationEndpoints.Notify(db, comment.AuthorId, userId, id, $"comment-removed:{commentId}", "comment-removed", $"Your comment was removed by {removedBy}.", ct);
             await transaction.CommitAsync(ct);
             return Results.NoContent();
         }).RequireAuthorization().RequireRateLimiting("social");
@@ -255,7 +239,7 @@ public static class PostEndpoints
     {
         var viewerId = Viewer(context)!.Value;
         if (!await db.Users.AnyAsync(u => u.Id == viewerId, ct)) return Results.Unauthorized();
-        if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await db.Comments.AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
+        if (!await db.Posts.AnyAsync(p => p.Id == id, ct) || !await ReportVisibility.VisibleComments(db, viewerId).AnyAsync(c => c.Id == commentId && c.PostId == id, ct)) return Results.NotFound();
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         try {
             await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO comment_likes (\"CommentId\", \"UserId\", \"Kind\") VALUES ({commentId}, {viewerId}, {kind}) ON CONFLICT (\"CommentId\", \"UserId\") DO UPDATE SET \"Kind\" = EXCLUDED.\"Kind\"", ct);

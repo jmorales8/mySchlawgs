@@ -3,25 +3,24 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api } from "../components/api";
-import { useModerationReports, useRemovedCommentReports } from "../hooks/use-reports";
+import { useModerationReports, useCommentReports } from "../hooks/use-reports";
 import { useAccount } from "../contexts/account-context";
 import PostModeration from "../components/community/moderation/post-moderation";
 import DisputeForm from "../components/community/moderation/dispute-form";
 import sharedStyles from "../components/community/community.module.css";
 import styles from "./page.module.css";
 import AccountBan from "./account-ban";
-import PostingRestrictions from "./posting-restrictions";
 
-function RemoveReportButton({ postId, reporterId, onRemoved }: { postId: string; reporterId: string; onRemoved: () => Promise<void> }) {
+function ReviewButton({ path, label, onSaved }: { path: string; label: string; onSaved: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function removeReport() {
+  async function review() {
     setBusy(true);
     setError("");
     try {
-      await api(`/api/moderation/posts/${postId}/reports/${reporterId}/dismiss`, { method: "POST" });
-      await onRemoved();
+      await api(path, { method: "POST" });
+      await onSaved();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -30,7 +29,7 @@ function RemoveReportButton({ postId, reporterId, onRemoved }: { postId: string;
   }
 
   return <>
-    <button type="button" disabled={busy} onClick={() => void removeReport()}>{busy ? "Removing report…" : "Remove report"}</button>
+    <button type="button" disabled={busy} onClick={() => void review()}>{busy ? "Saving…" : label}</button>
     {error && <p className={styles.error} role="alert">{error}</p>}
   </>;
 }
@@ -41,25 +40,28 @@ export default function ModerationPage() {
   const { user } = useAccount();
   const userId = user?.id ?? null;
   const { data: entries = [], loading, error, refresh } = useModerationReports(page);
-  const comments = useRemovedCommentReports(commentPage);
+  const comments = useCommentReports(commentPage);
   return <main className={sharedStyles.shell}><nav className={sharedStyles.nav}><Link href="/">← Back to community</Link></nav><div style={{ maxWidth: 900, margin: "auto", padding: 24 }}>
-    <h1>Moderation queue</h1><p>Review reported posts. Reported posts are hidden from public feeds while awaiting review.</p>
-    {user?.isAdmin && <><PostingRestrictions adminId={user.id} /><AccountBan /></>}
+    <h1>Moderation queue</h1><p>Posts and comments are hidden from the community after three distinct reports.</p>
+    {user?.isAdmin && <AccountBan />}
     {loading && <p role="status">Loading reports…</p>}{error && <p className={styles.error} role="alert">{error}</p>}
     {!loading && !error && <>
       {entries.length === 0 && <p>No reports on this page.</p>}
       {entries.map(entry => <article className={sharedStyles.card} key={entry.id}>
         <h2>@{entry.username ?? "unknown"} · {entry.reportCount} reports</h2>
-        <p>{entry.removedAt ? `Removed: ${entry.removalReason}` : entry.reportCount > 0 ? "Hidden from public feeds · Awaiting review" : "Visible in public feeds · Dispute awaiting review"}</p>
+        <p>{entry.removedAt ? `Removed: ${entry.removalReason}` : entry.hiddenByReports ? "Hidden from the community · Awaiting review" : "Still visible to the community"}</p>
         <details><summary>View photos and report details</summary>
           {entry.photos.map(photo => <figure key={photo.id}><img src={`/api/moderation/photos/${photo.id}`} alt="Reported post photo" loading="lazy" style={{ maxWidth: "100%", maxHeight: 400, objectFit: "contain" }} /><figcaption>{photo.description}</figcaption></figure>)}
           <ul>{entry.reports.map(report => <li key={report.reporterId}>
             <strong>{report.reason}</strong> · {new Date(report.createdAt).toLocaleString()}
             <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{report.details}</p>
-            <RemoveReportButton postId={entry.id} reporterId={report.reporterId} onRemoved={refresh} />
+            {entry.ownerId !== userId && <ReviewButton path={`/api/moderation/posts/${entry.id}/reports/${report.reporterId}/dismiss`} label="Remove report" onSaved={refresh} />}
           </li>)}</ul>
         </details>
-        {!entry.removedAt && <PostModeration postId={entry.id} userId={userId} canModerate reported={false} onRemoved={refresh} />}
+        {!entry.removedAt && entry.ownerId !== userId && <>
+          {entry.reportCount > 0 || entry.hiddenByReports ? <ReviewButton path={`/api/moderation/posts/${entry.id}/restore`} label={entry.hiddenByReports ? "Restore post" : "Dismiss post reports"} onSaved={refresh} /> : null}
+          <PostModeration postId={entry.id} userId={userId} canReport={false} canModerate reported={false} onRemoved={refresh} />
+        </>}
         {entry.disputes.map(dispute => <section key={dispute.id}><h3>Author dispute · {dispute.status}</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{dispute.explanation}</p>{dispute.decisionReason && <p>{dispute.decisionReason}</p>}{dispute.status === "pending" && <DisputeForm id={dispute.id} review onSaved={refresh} />}</section>)}
       </article>)}
       <button disabled={page === 0} onClick={() => { setPage(page - 1); }}>Previous</button> <span>Page {page + 1}</span> <button disabled={entries.length < 20} onClick={() => { setPage(page + 1); }}>Next</button>
@@ -73,8 +75,12 @@ export default function ModerationPage() {
         {comments.data?.map(report => <article className={sharedStyles.card} key={report.id}>
           <h3>@{report.authorUsername}</h3>
           <blockquote style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{report.body}</blockquote>
-          <p>Removed and reported by @{report.reporterUsername} · <time dateTime={report.createdAt}>{new Date(report.createdAt).toLocaleString()}</time></p>
+          <p>{report.reportCount} {report.reportCount === 1 ? "report" : "reports"} · {report.hiddenByReports ? "Hidden from the community" : "Still visible to the community"}</p>
           <Link href={`/posts/${report.postId}`}>View original post</Link>
+          {report.authorId !== userId && <div>
+            <ReviewButton path={`/api/moderation/comments/${report.id}/restore`} label={report.hiddenByReports ? "Restore comment" : "Dismiss comment reports"} onSaved={comments.refresh} />{" "}
+            <ReviewButton path={`/api/moderation/comments/${report.id}/remove`} label="Remove comment" onSaved={comments.refresh} />
+          </div>}
         </article>)}
         <button disabled={commentPage === 0} onClick={() => setCommentPage(commentPage - 1)}>Previous comments page</button>{" "}
         <span>Page {commentPage + 1}</span>{" "}

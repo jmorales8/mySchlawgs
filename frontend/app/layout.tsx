@@ -7,6 +7,7 @@ import TutorialProvider from "./contexts/tutorial-context";
 import AccountProvider from "./contexts/account-context";
 import QueryProvider from "./contexts/query-context";
 import ThemeSync from "./components/shared/theme-sync";
+import ReportToast from "./components/community/moderation/report-toast";
 import { isTheme, themeCookie, themeKey } from "./components/shared/theme-preference";
 
 const geistSans = Geist({
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <Script id="theme-init" strategy="beforeInteractive">{themeInit}</Script>
         <ThemeSync />
+        <ReportToast />
         <AccountProvider><QueryProvider><TutorialProvider>{children}</TutorialProvider></QueryProvider></AccountProvider>
       </body>
     </html>

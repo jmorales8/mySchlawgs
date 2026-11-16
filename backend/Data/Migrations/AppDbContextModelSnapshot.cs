@@ -576,6 +576,27 @@ namespace backend.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Backend.Models.CommentReport", b =>
+                {
+                    b.Property<Guid>("CommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReporterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DismissedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CommentId", "ReporterId");
+
+                    b.HasIndex("ReporterId");
+
+                    b.ToTable("comment_reports", (string)null);
+                });
+
             modelBuilder.Entity("Backend.Models.Notification", b =>
                 {
                     b.Property<Guid>("Id")
@@ -705,6 +726,9 @@ namespace backend.Data.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("HiddenByReports")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("ModerationVersion")
                         .HasColumnType("integer");
 
@@ -746,6 +770,9 @@ namespace backend.Data.Migrations
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HiddenByReports")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsReply")
                         .HasColumnType("boolean");
@@ -1040,6 +1067,21 @@ namespace backend.Data.Migrations
                     b.HasOne("Backend.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Models.CommentReport", b =>
+                {
+                    b.HasOne("Backend.Models.PostComment", null)
+                        .WithMany()
+                        .HasForeignKey("CommentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Backend.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("ReporterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

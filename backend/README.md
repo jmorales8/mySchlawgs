@@ -107,14 +107,14 @@ Existing `comment_likes` records are preserved as `like` by the CommentReactions
 migration. Activity responses include counts by kind, the viewer's choice, and
 the post author's reaction. The older `/like` endpoints remain supported.
 
-## Reported post visibility
+## Report visibility
 
-The first active report hides a post from Latest, Liked / interacted, random
-discovery, and public post/image/activity URLs. The author retains access in
-My photos and sees an awaiting-review notice. Reports do not automatically
-remove a post based on their count. A moderator removal hides it from My photos
-as well; the private reports page retains evidence for review and disputes.
-An accepted dispute dismisses active reports and restores public visibility.
+A report hides the post or comment for the reporter and sends it to the moderation
+queue. Three active reports from distinct accounts hide the item from the community
+until moderation review. Moderators can restore or remove the item. Restored items
+remain hidden for the people who reported them. Reporting does not restrict the
+author's account. Post authors can still review hidden posts in My photos and
+dispute their reports or takedowns from the private reports page.
 
 ## Integration checks
 

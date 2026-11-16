@@ -11,7 +11,6 @@ public static class ModerationEndpoints
     public sealed record RemovalInput(string? Reason);
     private static readonly string[] Reasons = ["spam", "harassment", "hate", "violence", "animal-abuse", "sexual-content", "privacy", "other"];
     private static Guid UserId(HttpContext context) => Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-    internal static IResult PostingRestricted() => Results.Json(new { message = "You can still react, but posting and commenting are paused until an admin lifts the restriction." }, statusCode: 403);
 
     internal static Task<AppUser?> LockPostingAccount(AppDbContext db, Guid id, CancellationToken ct) =>
         db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {id} FOR NO KEY UPDATE").SingleOrDefaultAsync(ct);
@@ -23,10 +22,7 @@ public static class ModerationEndpoints
                 return Results.BadRequest(new { message = "Choose a report reason and use at most 1,000 characters for details." });
             var userId = UserId(context);
             if (!await db.Users.AnyAsync(u => u.Id == userId, ct)) return Results.Unauthorized();
-            // Lock the account before the post, matching account deletion and publishing.
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
-            var ownerId = await db.Posts.Where(p => p.Id == id).Select(p => p.OwnerId).SingleOrDefaultAsync(ct);
-            var owner = ownerId is Guid accountId ? await LockPostingAccount(db, accountId, ct) : null;
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
             if (post == null) return Results.NotFound(new { message = "This post is no longer available." });
             if (post.OwnerId == userId) return Results.Json(new { message = "You cannot report your own post." }, statusCode: 403);
@@ -34,12 +30,16 @@ public static class ModerationEndpoints
                 return Results.Conflict(new { message = "You have already reported this post." });
             db.Reports.Add(new PostReport { PostId = id, ReporterId = userId, Reason = input.Reason, Details = input.Details?.Trim() ?? "", CreatedAt = DateTimeOffset.UtcNow });
             post.ModerationVersion++;
-            if (owner != null) RestrictPosting(owner);
             var count = await db.Reports.CountAsync(r => r.PostId == id && r.DismissedAt == null, ct) + 1;
+            var newlyHidden = !post.HiddenByReports && count >= ReportVisibility.Threshold;
+            if (newlyHidden) post.HiddenByReports = true;
             await db.SaveChangesAsync(ct);
-            await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"report:{id}:{userId}", "report", $"Your post was reported for {input.Reason} and has {count} active report(s). You can see it in My photos and request a review. Posting and commenting are paused until an admin lifts the restriction.", ct);
+            await NotificationEndpoints.Notify(db, post.OwnerId, null, id, $"report:{id}:{userId}", "report", newlyHidden
+                ? "Your post received three reports and is hidden from the community while moderators review it. You can request a review."
+                : $"Your post was reported for {input.Reason}. You can see the report and request a review.", ct);
+            await NotificationEndpoints.NotifyModerators(db, post.OwnerId, userId, id, $"moderation-post:{id}", "A post was reported. Review it in the moderation queue.", ct);
             await transaction.CommitAsync(ct);
-            return Results.Ok(new { removed = false, hidden = true, message = "Report received. This post is hidden from public feeds while awaiting moderator review." });
+            return Results.Ok(new { removed = false, hidden = true });
         }).RequireAuthorization().RequireRateLimiting("reports");
 
         var moderation = endpoints.MapGroup("/api/moderation").RequireAuthorization();
@@ -53,10 +53,10 @@ public static class ModerationEndpoints
         moderation.MapGet("/reports", async (int? page, AppDbContext db, CancellationToken ct) => {
             var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
             return Results.Ok(await db.Posts.IgnoreQueryFilters().AsSplitQuery()
-                .Where(p => p.RemovedAt != null || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null) || db.Disputes.Any(d => d.PostId == p.Id && d.Status == "pending"))
-                .OrderBy(p => p.RemovedAt != null).ThenByDescending(p => db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null)).ThenBy(p => p.Id)
+                .Where(p => p.RemovedAt != null || p.HiddenByReports || db.Reports.Any(r => r.PostId == p.Id && r.DismissedAt == null) || db.Disputes.Any(d => d.PostId == p.Id && d.Status == "pending"))
+                .OrderBy(p => p.RemovedAt != null).ThenByDescending(p => p.HiddenByReports).ThenByDescending(p => db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null)).ThenBy(p => p.Id)
                 .Skip(offset).Take(20).Select(p => new {
-                    p.Id, p.RemovedAt, p.RemovalReason,
+                    p.Id, p.OwnerId, p.RemovedAt, p.RemovalReason, p.HiddenByReports,
                     username = db.Users.Where(u => u.Id == p.OwnerId).Select(u => u.Username).FirstOrDefault(),
                     reportCount = db.Reports.Count(r => r.PostId == p.Id && r.DismissedAt == null),
                     reports = db.Reports.Where(r => r.PostId == p.Id && r.DismissedAt == null).OrderByDescending(r => r.CreatedAt).Select(r => new { r.ReporterId, r.Reason, r.Details, r.CreatedAt }).ToList(),
@@ -71,9 +71,29 @@ public static class ModerationEndpoints
         moderation.MapGet("/comment-reports", async (int? page, AppDbContext db, CancellationToken ct) => {
             var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
             return Results.Ok(await db.RemovedCommentReports.AsNoTracking()
-                .OrderByDescending(report => report.CreatedAt).ThenByDescending(report => report.Id)
-                .Skip(offset).Take(20).ToListAsync(ct));
+                .OrderByDescending(r => r.CreatedAt).ThenByDescending(r => r.Id).Skip(offset).Take(20).ToListAsync(ct));
         });
+        moderation.MapGet("/reported-comments", async (int? page, AppDbContext db, CancellationToken ct) => {
+            var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
+            return Results.Ok(await db.Comments.AsNoTracking()
+                .Where(c => c.HiddenByReports || db.CommentReports.Any(r => r.CommentId == c.Id && r.DismissedAt == null))
+                .OrderByDescending(c => c.HiddenByReports).ThenBy(c => c.CreatedAt).ThenBy(c => c.Id).Skip(offset).Take(20)
+                .Select(c => new { c.Id, c.PostId, c.AuthorId, authorUsername = c.Author.Username, c.Body, c.HiddenByReports,
+                    reportCount = db.CommentReports.Count(r => r.CommentId == c.Id && r.DismissedAt == null) }).ToListAsync(ct));
+        });
+        CommentReportEndpoints.MapReviewEndpoints(moderation);
+        moderation.MapPost("/posts/{id:guid}/restore", async (Guid id, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
+            if (post == null) return Results.NotFound();
+            if (post.OwnerId == UserId(context)) return Results.Forbid();
+            await db.Reports.Where(r => r.PostId == id && r.DismissedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.DismissedAt, DateTimeOffset.UtcNow), ct);
+            post.HiddenByReports = false;
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return Results.NoContent();
+        }).RequireRateLimiting("social");
         moderation.MapPost("/posts/{id:guid}/reports/{reporterId:guid}/dismiss", async (Guid id, Guid reporterId, AppDbContext db, HttpContext context, CancellationToken ct) => {
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             var post = await db.Posts.FromSqlInterpolated($"SELECT * FROM posts WHERE \"Id\" = {id} FOR UPDATE").IgnoreQueryFilters().SingleOrDefaultAsync(ct);
@@ -85,6 +105,8 @@ public static class ModerationEndpoints
             if (report.DismissedAt == null)
             {
                 report.DismissedAt = DateTimeOffset.UtcNow;
+                if (post.HiddenByReports && await db.Reports.CountAsync(r => r.PostId == id && r.ReporterId != reporterId && r.DismissedAt == null, ct) < ReportVisibility.Threshold)
+                    post.HiddenByReports = false;
                 await db.SaveChangesAsync(ct);
             }
             await transaction.CommitAsync(ct);
@@ -107,10 +129,4 @@ public static class ModerationEndpoints
         AccountBanEndpoints.MapAccountBanEndpoints(moderation);
     }
 
-    internal static void RestrictPosting(AppUser user)
-    {
-        var now = DateTimeOffset.UtcNow;
-        user.PostingRestrictionStartedAt ??= user.PostingRestrictedAt ?? now;
-        user.PostingRestrictedAt = now;
-    }
 }

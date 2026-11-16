@@ -18,6 +18,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PostReaction> Reactions => Set<PostReaction>();
     public DbSet<PostComment> Comments => Set<PostComment>();
     public DbSet<PostReport> Reports => Set<PostReport>();
+    public DbSet<CommentReport> CommentReports => Set<CommentReport>();
     public DbSet<RemovedCommentReport> RemovedCommentReports => Set<RemovedCommentReport>();
     public DbSet<CommentLike> CommentLikes => Set<CommentLike>();
     public DbSet<Notification> Notifications => Set<Notification>();
@@ -25,6 +26,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var commentReport = modelBuilder.Entity<CommentReport>();
+        commentReport.ToTable("comment_reports");
+        commentReport.HasKey(r => new { r.CommentId, r.ReporterId });
+        commentReport.HasOne<PostComment>().WithMany().HasForeignKey(r => r.CommentId).OnDelete(DeleteBehavior.Cascade);
+        commentReport.HasOne<AppUser>().WithMany().HasForeignKey(r => r.ReporterId).OnDelete(DeleteBehavior.Cascade);
+
         var postingAppeal = modelBuilder.Entity<PostingAppeal>();
         postingAppeal.ToTable("posting_appeals");
         postingAppeal.HasIndex(a => new { a.UserId, a.RestrictionStartedAt }).IsUnique();

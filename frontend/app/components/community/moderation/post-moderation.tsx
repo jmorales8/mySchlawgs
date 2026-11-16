@@ -27,7 +27,7 @@ export default function PostModeration({ postId, userId, canReport = true, canMo
       {children}
       {canReport && <div className={styles.reportAction}>{reportButton}</div>}
     </div>}
-    {canReport && (!children || canModerate || mode || message) && <div className={styles.moderation}>
+    {(canReport || canModerate) && (!children || canModerate || mode || message) && <div className={styles.moderation}>
     {!children && reportButton}
     {canModerate && (user?.isAdmin ? <button type="button" className={styles.plain} disabled={busy} onClick={() => void removePost()}>{busy ? "Removing…" : "Remove post · Admin"}</button> : <button type="button" className={styles.plain} disabled={busy} onClick={() => { setMode("remove"); setDetails(""); setMessage(""); }}>Remove post · Moderator</button>)}
     {mode && (!userId ? <p><a href="#account">Log in or sign up</a> to report this post. Each account can report a post once.</p> : <form onSubmit={async event => {
@@ -37,8 +37,8 @@ export default function PostModeration({ postId, userId, canReport = true, canMo
           await api(`/api/moderation/posts/${postId}/remove`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: details }) });
           setMode(null); await onRemoved();
         } else {
-          const result = await api<{ removed: boolean; hidden: boolean; message: string }>(`/api/posts/${postId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, details }) });
-          setSent(true); setMode(null); setMessage(result.message); if (result.hidden || result.removed) await onRemoved();
+          await api(`/api/posts/${postId}/reports`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason, details }) });
+          setSent(true); setMode(null); await onRemoved();
         }
       } catch (e) { setMessage((e as Error).message); } finally { setBusy(false); }
     }}>

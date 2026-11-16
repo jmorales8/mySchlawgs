@@ -1,0 +1,17 @@
+.region:has(button) {
+  --toast-gutter: clamp(12px, 2vw, 24px);
+  position: fixed;
+  z-index: 60;
+  inset: auto var(--toast-gutter) calc(108px + env(safe-area-inset-bottom)) auto;
+  width: min(380px, calc(100vw - 2 * var(--toast-gutter)));
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 4px 24px #0003;
+}
+.region p { margin: 0 0 8px; }
+.region button { min-height: 44px; padding: 6px 12px; text-decoration: underline; }
+@media (min-width: 761px) {
+  .region:has(button) { bottom: 24px; }
+}

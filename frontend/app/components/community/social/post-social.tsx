@@ -123,7 +123,8 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await api(`${url}/comments/${commentId}${report ? "?report=true" : ""}`, { method: "DELETE" });
+      if (report) await api(`${url}/comments/${commentId}/reports`, { method: "POST" });
+      else await api(`${url}/comments/${commentId}`, { method: "DELETE" });
       setRemoval(null); await reload();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -228,11 +229,11 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
         <div className={styles.commentContent}>
         <div className={styles.commentHeader}><strong>@{comment.username}</strong><time dateTime={comment.createdAt} title={new Date(comment.createdAt).toLocaleString()}>{new Date(comment.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
-          {(activity?.canChooseQuote || comment.canEdit || comment.canDelete) && <CommentOptions label={`Options for comment by @${comment.username}`}>
+          {(activity?.canChooseQuote || comment.canEdit || comment.canDelete || (userId && comment.authorId !== userId)) && <CommentOptions label={`Options for comment by @${comment.username}`}>
             {activity?.canChooseQuote && <button type="button" disabled={busy || quoteId === comment.id} onClick={() => void chooseQuote(comment.id)}>{quoteId === comment.id ? "Selected best quote" : photoCount > 1 ? `Choose as best quote for photo ${slideNumber}` : "Choose as best quote"}</button>}
             {comment.canEdit && !user?.postingRestrictedAt && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoval(null); }}>Edit comment</button>}
             {comment.canDelete && <button type="button" disabled={busy} onClick={() => { if (user?.isAdmin && activity?.canModerate) void removeComment(comment.id); else setRemoval({ id: comment.id, report: false }); }}>Remove comment{user?.isAdmin && activity?.canModerate ? " · Admin" : ""}</button>}
-            {comment.canDelete && comment.authorId !== userId && <button type="button" disabled={busy} onClick={() => setRemoval({ id: comment.id, report: true })}>Remove comment and report</button>}
+            {userId && comment.authorId !== userId && <button type="button" disabled={busy} onClick={() => setRemoval({ id: comment.id, report: true })}>Report comment</button>}
           </CommentOptions>}
         </div>
         {editingId === comment.id && !user?.postingRestrictedAt ? <CommentEditor body={comment.body} reply={comment.isReply} busy={busy} onCancel={() => setEditingId(null)} onSave={async updatedBody => {
@@ -263,7 +264,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
             setEditingId(null); setReplyError(""); setReplyTo(replyTo?.id === comment.id ? null : comment);
           }}>Reply</button>
         </div>
-            {removal?.id === comment.id && <div className={styles.confirm} role="group" aria-label="Confirm comment removal"><span>{removal.report ? "Remove this comment and save a copy for moderators?" : "Remove this comment?"}</span><button type="button" disabled={busy} onClick={() => void removeComment(comment.id, removal.report)}>{removal.report ? "Remove and report" : "Remove"}</button><button type="button" disabled={busy} onClick={() => setRemoval(null)}>Cancel</button></div>}
+            {removal?.id === comment.id && <div className={styles.confirm} role="group" aria-label={removal.report ? "Confirm comment report" : "Confirm comment removal"}><span>{removal.report ? "Report and hide this comment from your view?" : "Remove this comment?"}</span><button type="button" disabled={busy} onClick={() => void removeComment(comment.id, removal.report)}>{removal.report ? "Submit report" : "Remove"}</button><button type="button" disabled={busy} onClick={() => setRemoval(null)}>Cancel</button></div>}
         {userId && !user?.postingRestrictedAt && replyTo?.id === comment.id && <CommentComposer
           id={`reply-${postId}-${comment.id}`} reply textareaRef={replyRef}
           label={`Reply to @${comment.username} · ${comment.slideNumber ? `Photo ${comment.slideNumber}` : "Post"}`}

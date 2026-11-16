@@ -42,8 +42,8 @@ function ReportsContent() {
     {error && <p role="alert">{error} <Link href="/#account">Account</Link></p>}{loading && !error && <p>Loading…</p>}
     {entries?.length === 0 && <p>No reports or disputes on this page.</p>}
     {entries?.map(entry => <article className={sharedStyles.card} key={entry.id}>
-      <h2>{entry.removedAt ? "Post taken down" : entry.reportCount > 0 ? "Awaiting moderator review" : "Published post"} · {entry.reportCount} active reports</h2>
-      <p role="status">{entry.removedAt ? "This post has been removed from public feeds and My photos. You can still view its report history and request a review here." : entry.reportCount > 0 ? "This post is hidden from public feeds while awaiting moderator review. Don’t worry—you can still see it in My photos." : "The reports have been dismissed. Your post is visible to the community again."}</p>
+      <h2>{entry.removedAt ? "Post taken down" : entry.hiddenByReports ? "Awaiting moderator review" : "Published post"} · {entry.reportCount} active reports</h2>
+      <p role="status">{entry.removedAt ? "This post has been removed from public feeds and My photos. You can still view its report history and request a review here." : entry.hiddenByReports ? "This post is hidden from public feeds while moderators review it. You can still see it in My photos." : entry.reportCount > 0 ? "This post is still visible to the community. It is hidden for people who reported it." : "The reports have been dismissed. Your post is visible to the community."}</p>
       <p>{entry.reasons.join(", ")}</p>{entry.removalReason && <p>Removal reason: {entry.removalReason}</p>}
       <details><summary>View your photos</summary>{entry.photos.map(photo => <figure key={photo.id}><img src={`/api/account/reports/photos/${photo.id}`} alt="Your reported photo" style={{ maxWidth: "100%", maxHeight: 300, objectFit: "contain" }} /><figcaption>{photo.description}</figcaption></figure>)}</details>
       {!entry.removedAt && <Link href={`/posts/${entry.id}`}>Open post</Link>}

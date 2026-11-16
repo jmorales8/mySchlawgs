@@ -73,7 +73,6 @@ public static class PhotoEndpoints
         var ownerId = Guid.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var user = await db.Users.FindAsync([ownerId], cancellationToken);
         if (user is null) return Results.Unauthorized();
-        if (!profile && user.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
         AnimalProfile? animal = null;
         var animalsById = new Dictionary<Guid, AnimalProfile>();
         if (animalId != null)
@@ -149,21 +148,11 @@ public static class PhotoEndpoints
 
         photos.Add(photo);
         }
-        await using var transaction = !profile ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
-        if (!profile)
-        {
-            // Reload the restriction under a lock after image processing, before publishing.
-            var postingAccount = await db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {ownerId} FOR NO KEY UPDATE")
-                .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
-            if (postingAccount is null) return Results.Unauthorized();
-            if (postingAccount.PostingRestrictedAt != null) return ModerationEndpoints.PostingRestricted();
-            db.Posts.Add(new Post { Id = batchId, OwnerId = ownerId, CreatedAt = uploadedAt });
-        }
+        if (!profile) db.Posts.Add(new Post { Id = batchId, OwnerId = ownerId, CreatedAt = uploadedAt });
         db.Photos.AddRange(photos);
         if (animal != null) animal.ProfilePhotoId = photos[0].Id;
         else if (profile) user.ProfilePhotoId = photos[0].Id;
         await db.SaveChangesAsync(cancellationToken);
-        if (transaction != null) await transaction.CommitAsync(cancellationToken);
         if (animal != null) return Results.Ok(animal);
         return profile ? Results.Ok(AccountEndpoints.UserResponse(user)) : Results.Created("/api/photos", photos.Select(photo => PhotoResponse.FromPhoto(photo) with {
             AnimalProfiles = photo.AnimalProfiles.Select(tag => animalsById[tag.AnimalProfileId])
@@ -176,6 +165,7 @@ public static class PhotoEndpoints
     {
         if (feed is not (null or "latest" or "interacted" or "mine" or "following")) return Results.BadRequest(new { message = "Choose a valid feed." });
         var query = db.Photos.AsNoTracking().Where(x => !x.IsProfilePhoto);
+        Guid? viewer = Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId) ? viewerId : null;
         if (feed is "interacted" or "mine" or "following") {
             if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Results.Unauthorized();
             query = feed == "mine" ? query.Where(x => x.OwnerId == userId)
@@ -183,10 +173,13 @@ public static class PhotoEndpoints
                 : query.Where(x =>
                 db.Reactions.Any(r => r.PostId == x.PostId && r.UserId == userId)
                 || db.Comments.Any(c => c.PostId == x.PostId && c.AuthorId == userId)
-                || db.Comments.Any(c => c.PostId == x.PostId && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == userId)));
+                || ReportVisibility.VisibleComments(db, userId).Any(c => c.PostId == x.PostId && db.CommentLikes.Any(l => l.CommentId == c.Id && l.UserId == userId)));
         }
         if (feed != "mine")
-            query = query.Where(x => !db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null));
+        {
+            var hidden = ReportVisibility.HiddenPosts(db, viewer);
+            query = query.Where(x => x.PostId == null || !hidden.Contains(x.PostId.Value));
+        }
         var photos = await query
             // Load tag IDs and profile details separately to avoid multiplying rows per photo.
             .AsSplitQuery()
@@ -196,7 +189,7 @@ public static class PhotoEndpoints
                 x.Id, x.FileName, x.ContentType, x.Size, x.UploadedAt, $"/api/photos/{x.Id}", x.Description, x.OwnerId,
                 x.Owner == null ? null : x.Owner.Username,
                 x.Owner == null || x.Owner.ProfilePhotoId == null ? null : $"/api/photos/{x.Owner.ProfilePhotoId}", x.BatchId, x.BatchPosition, x.PostId,
-                db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null), x.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
+                db.Posts.Any(p => p.Id == x.PostId && p.HiddenByReports), x.AnimalProfiles.Select(tag => tag.AnimalProfileId).ToArray(),
                 db.AnimalProfiles.Where(animal => x.AnimalProfiles.Any(tag => tag.AnimalProfileId == animal.Id))
                     .OrderBy(animal => animal.Name).ThenBy(animal => animal.Id)
                     .Select(animal => new AnimalProfileSummary(animal.Id, animal.Name, animal.AnimalType, animal.Breed,
@@ -213,8 +206,9 @@ public static class PhotoEndpoints
         CancellationToken cancellationToken)
     {
         Guid? viewer = Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
+        var hidden = ReportVisibility.HiddenPosts(db, viewer);
         var photo = await db.Photos.AsNoTracking().Where(x => (viewer != null && x.OwnerId == viewer)
-            || !db.Reports.Any(r => r.PostId == x.PostId && r.DismissedAt == null))
+            || x.PostId == null || !hidden.Contains(x.PostId.Value))
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         return photo is null
             ? Results.NotFound()

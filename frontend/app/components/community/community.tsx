@@ -26,6 +26,7 @@ import ThemeToggle from "../shared/theme-toggle";
 import FeedEnding from "./feed/feed-ending";
 import FeedSkeleton from "./feed/feed-skeleton";
 import PhotoCard from "./feed/photo-card";
+import CreateProfileDialog from "../../account/animals/create-profile-dialog";
 
 type AnimalOption = { id: string; name: string; animalType: string; profilePhotoUrl: string | null };
 type Draft = { file: File; url: string; description: string; animalIds: string[] };
@@ -59,10 +60,12 @@ export default function Community({ postId, discovery, notificationCommentId, in
   const [descriptionMode, setDescriptionMode] = useState<"individual" | "shared">("individual");
   const [sharedDescription, setSharedDescription] = useState("");
   const [animalProfilesResult, setAnimalProfilesResult] = useState<{ ownerId: string; items: AnimalOption[]; failed: boolean } | null>(null);
+  const animalProfilesRequest = useRef(0);
   const userId = user?.id;
   const animalProfiles = userId && animalProfilesResult?.ownerId === userId ? animalProfilesResult.items : [];
   const animalProfilesLoading = !!userId && animalProfilesResult?.ownerId !== userId;
   const [animalPicker, setAnimalPicker] = useState<{ draftUrl: string; closing: boolean } | null>(null);
+  const [createProfile, setCreateProfile] = useState<{ draftUrl: string; ownerId: string } | null>(null);
   const animalPickerRef = useRef<HTMLDivElement>(null);
   const closeAnimalPicker = useCallback(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -118,9 +121,10 @@ export default function Community({ postId, discovery, notificationCommentId, in
     if (!userId) return;
     let active = true;
     const loadAnimalProfiles = () => {
+      const request = ++animalProfilesRequest.current;
       api<AnimalOption[]>("/api/account/animals")
-        .then(items => { if (active) setAnimalProfilesResult({ ownerId: userId, items, failed: false }); })
-        .catch(() => { if (active) setAnimalProfilesResult({ ownerId: userId, items: [], failed: true }); });
+        .then(items => { if (active && request === animalProfilesRequest.current) setAnimalProfilesResult({ ownerId: userId, items, failed: false }); })
+        .catch(() => { if (active && request === animalProfilesRequest.current) setAnimalProfilesResult({ ownerId: userId, items: [], failed: true }); });
     };
     loadAnimalProfiles();
     window.addEventListener("focus", loadAnimalProfiles);
@@ -239,7 +243,9 @@ export default function Community({ postId, discovery, notificationCommentId, in
         else { setAccountMenuClosing(false); setAccountMenuOpen(true); }
       }}>
         <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
-      </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}><span className={layoutStyles.mobileAccountName}>@{user.username}</span>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}            <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
+      </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}><span className={layoutStyles.mobileAccountName}>@{user.username}</span>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}
+            <Link href="/account/animals" onClick={closeAccountMenu}>Schlawg Garden</Link>
+            <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
             <ThemeToggle />
             {user.verifiedEmail ? <span className={layoutStyles.verifiedEmail}>Verified Email: {user.verifiedEmail}</span> : <Link href="/account/email" className={layoutStyles.textButton}>Verify email</Link>}
             <button className={layoutStyles.textButton} disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await api("/api/auth/logout", { method: "POST" }); setAccountMenuOpen(false); setAccountMenuClosing(false); setUser(null); chooseFeed("latest"); clearDrafts(); setNotice(""); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>Log out</button></div>}</details>;
@@ -354,7 +360,11 @@ export default function Community({ postId, discovery, notificationCommentId, in
                         </button>;
                       })}
                       {animalProfilesResult?.failed && <button type="button" onClick={() => window.dispatchEvent(new Event("focus"))}>Try again</button>}
-                      {!animalProfilesLoading && !animalProfilesResult?.failed && <Link href="/account/animals#new" target="_blank" rel="noreferrer" onClick={closeAnimalPicker}>+ Add a profile</Link>}
+                      <button type="button" disabled={busy} aria-haspopup="dialog" onClick={() => {
+                        animalPickerRef.current?.querySelector<HTMLButtonElement>(`.${composerStyles.animalPickerTrigger}`)?.focus();
+                        setAnimalPicker(null);
+                        setCreateProfile({ draftUrl: draft.url, ownerId: user.id });
+                      }}>+ Create a schlawg profile</button>
                     </div>}
                   </div>
                 </div>
@@ -366,6 +376,16 @@ export default function Community({ postId, discovery, notificationCommentId, in
             {drafts.length > 0 && <button type="button" className={composerStyles.addMore} disabled={busy || drafts.length >= 10} onClick={() => fileRef.current?.click()}>{drafts.length >= 10 ? "10 photo limit reached" : "+ Add more photos"}</button>}
           </div>
         </form></dialog>}
+        {composerOpen && user && createProfile?.ownerId === user.id && <CreateProfileDialog postPhoto={drafts.find(draft => draft.url === createProfile.draftUrl)?.file} onCancel={() => setCreateProfile(null)} onSaved={animal => {
+          animalProfilesRequest.current++;
+          setAnimalProfilesResult(current => ({
+            ownerId: user.id,
+            items: [...(current?.ownerId === user.id ? current.items.filter(item => item.id !== animal.id) : []), animal],
+            failed: false,
+          }));
+          updateDrafts(draftRef.current.map(draft => draft.url === createProfile.draftUrl ? { ...draft, animalIds: [...draft.animalIds, animal.id] } : draft));
+          setCreateProfile(null);
+        }} />}
         {!mobileNavigation && !postId && <VoteLeaders />}
         {user && !postId && <MySchlawgs key={user.id} />}
         {mobileNavigation && !postId && feed === "mine" && (

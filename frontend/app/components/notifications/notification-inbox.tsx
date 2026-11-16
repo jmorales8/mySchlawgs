@@ -41,7 +41,7 @@ export default function NotificationInbox({ onNavigate }: { onNavigate?: () => v
         <p>{!item.readAt && <strong>New · </strong>}{item.message}</p>
         <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
         <footer className={styles.cardActions}>
-          <p>{["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link className={styles.viewPost} onClick={onNavigate} href={item.commentId ? `/posts/${item.postId}?notificationComment=${item.commentId}` : `/posts/${item.postId}`}>{item.commentId ? "View comment" : "View post"}</Link>}</p>
+          <p>{item.kind === "moderation-report" ? <Link onClick={onNavigate} href="/moderation">Open moderation queue</Link> : ["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link className={styles.viewPost} onClick={onNavigate} href={item.commentId ? `/posts/${item.postId}?notificationComment=${item.commentId}` : `/posts/${item.postId}`}>{item.commentId ? "View comment" : "View post"}</Link>}</p>
           {!item.readAt && <button disabled={busy} onClick={() => void mark([item])}>Mark as read</button>}
         </footer>
       </article>)}
