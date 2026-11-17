@@ -117,6 +117,7 @@ app.MapAnimalProfileEndpoints();
 app.MapPhotoEndpoints();
 app.MapPostEndpoints();
 app.MapModerationEndpoints();
+app.MapPromptEndpoints();
 app.MapPostingAppealEndpoints();
 app.MapNotificationEndpoints();
 

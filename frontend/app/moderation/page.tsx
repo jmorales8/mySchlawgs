@@ -10,6 +10,7 @@ import DisputeForm from "../components/community/moderation/dispute-form";
 import sharedStyles from "../components/community/community.module.css";
 import styles from "./page.module.css";
 import AccountBan from "./account-ban";
+import PromptIdeas from "./prompt-ideas";
 
 function ReviewButton({ path, label, onSaved }: { path: string; label: string; onSaved: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
@@ -44,6 +45,7 @@ export default function ModerationPage() {
   return <main className={sharedStyles.shell}><nav className={sharedStyles.nav}><Link href="/">← Back to community</Link></nav><div style={{ maxWidth: 900, margin: "auto", padding: 24 }}>
     <h1>Moderation queue</h1><p>Posts and comments are hidden from the community after three distinct reports.</p>
     {user?.isAdmin && <AccountBan />}
+    {user && (user.isAdmin || user.isModerator) && <PromptIdeas key={user.id} isAdmin={user.isAdmin} />}
     {loading && <p role="status">Loading reports…</p>}{error && <p className={styles.error} role="alert">{error}</p>}
     {!loading && !error && <>
       {entries.length === 0 && <p>No reports on this page.</p>}

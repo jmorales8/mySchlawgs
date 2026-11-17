@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Backend.Data;
 using Backend.Dtos;
 using Backend.Models;
@@ -32,19 +33,22 @@ public static class PostEndpoints
             return await next(context);
         });
         group.MapGet("/random", async (string? category, Guid? excludePostId, AppDbContext db, HttpContext context, CancellationToken ct) => {
-            if (category is not ("popular" or "niche" or "relevant"))
-                return Results.BadRequest(new { message = "Choose Popular, Niche, or Relevant." });
+            if (category is not ("popular" or "niche" or "relevant" or "iotw"))
+                return Results.BadRequest(new { message = "Choose Popular, Niche, Relevant, or Idea of the Week." });
             var viewerId = Viewer(context);
             var since = DateTimeOffset.UtcNow.AddDays(-7);
             var hidden = ReportVisibility.HiddenPosts(db, viewerId);
             var visibleComments = ReportVisibility.VisibleComments(db, viewerId);
             var candidates = db.Posts.AsNoTracking().Where(p => p.OwnerId != null
                 && !hidden.Contains(p.Id)
-                && (viewerId == null || p.OwnerId != viewerId) && (excludePostId == null || p.Id != excludePostId)
+                && (category == "iotw" || viewerId == null || p.OwnerId != viewerId)
+                && (excludePostId == null || p.Id != excludePostId)
                 && db.Photos.Any(photo => photo.PostId == p.Id && !photo.IsProfilePhoto));
             candidates = category switch {
                 "popular" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + visibleComments.Count(c => c.PostId == p.Id) >= 5),
                 "niche" => candidates.Where(p => db.Reactions.Count(r => r.PostId == p.Id) + visibleComments.Count(c => c.PostId == p.Id) < 5),
+                "iotw" => candidates.Where(p => db.Photos.Any(photo => photo.PostId == p.Id && !photo.IsProfilePhoto
+                    && Regex.IsMatch(photo.Description, PromptEndpoints.IdeaOfTheWeekPattern, RegexOptions.IgnoreCase))),
                 _ => candidates.Where(p => visibleComments.Any(c => c.PostId == p.Id && c.CreatedAt >= since))
             };
             var picked = await candidates.OrderBy(p => EF.Functions.Random()).Select(p => new { postId = p.Id }).FirstOrDefaultAsync(ct);
@@ -93,7 +97,7 @@ public static class PostEndpoints
                     profilePhotoUrl = c.Author.ProfilePhotoId == null ? null : $"/api/photos/{c.Author.ProfilePhotoId}",
                     canEdit = viewerId != null && c.AuthorId == viewerId,
                     canDelete = viewerId != null && (c.AuthorId == viewerId || post.OwnerId == viewerId || admin) }).ToListAsync(ct);
-            var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && visibleComments.Any(c => c.Id == p.BestQuoteCommentId))
+            var bestQuotes = await db.Photos.AsNoTracking().Where(p => p.PostId == id && !p.IsProfilePhoto && visibleComments.Any(c => c.Id == p.BestQuoteCommentId && c.PhotoId == p.Id))
                 .Select(p => new { photoId = p.Id, commentId = p.BestQuoteCommentId }).ToListAsync(ct);
             var reportedByMe = viewerId != null && await db.Reports.AnyAsync(r => r.PostId == id && r.ReporterId == viewerId, ct);
             return Results.Ok(new { reactions, comments, bestQuotes, canChooseQuote = viewerId != null && post.OwnerId == viewerId, canModerate = admin && post.OwnerId != viewerId, reportedByMe });
@@ -174,8 +178,8 @@ public static class PostEndpoints
             if (post is null) return Results.NotFound();
             if (post.OwnerId != Viewer(context)) return Results.Forbid();
             if (!await db.Photos.AnyAsync(p => p.Id == photoId && p.PostId == id && !p.IsProfilePhoto, ct)) return Results.NotFound();
-            if (input.CommentId != null && !await ReportVisibility.VisibleComments(db, Viewer(context)).AnyAsync(c => c.Id == input.CommentId && c.PostId == id, ct))
-                return Results.BadRequest(new { message = "Choose a comment from this post." });
+            if (input.CommentId != null && !await ReportVisibility.VisibleComments(db, Viewer(context)).AnyAsync(c => c.Id == input.CommentId && c.PostId == id && c.PhotoId == photoId, ct))
+                return Results.BadRequest(new { message = "Choose a comment from this photo." });
             // One nullable reference per photo makes replacement atomic and optional.
             await using var transaction = await db.Database.BeginTransactionAsync(ct);
             try {

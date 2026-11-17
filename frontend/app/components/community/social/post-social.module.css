@@ -133,7 +133,7 @@
 .shareLink { margin-top: 16px; }
 .shareLink a, .message a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
 .shareLink a { display: inline-block; margin-top: 10px; }
-.message, .error { font-size: .875rem; line-height: 1.6; margin: 12px 0 0; }
+.message, .error { font-size: .875rem; line-height: 1.6; margin: 12px 0 12px 0; }
 .error { color: var(--error-ink); }
 .comment { margin: 0; padding: 9px 0; border-top: 1px solid var(--border); }
 .comments > .comment:last-of-type { padding-bottom: 0; }

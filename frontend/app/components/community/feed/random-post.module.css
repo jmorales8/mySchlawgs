@@ -9,6 +9,11 @@
 .discovery fieldset { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; border: 0; padding: 0; margin: 0; }
 .discoveryChoice.discoveryChoice { display: flex; align-items: center; gap: 7px; padding: 10px; margin: 0; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
 .discoveryChoice:has(input:checked) { background: var(--soft); border-color: var(--control-border); }
+.ideaShort { display: none; }
+@media (max-width: 360px) {
+  .ideaFull { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .ideaShort { display: inline; }
+}
 .discoveryTrigger.discoveryTrigger, .discoveryPanel > button, .discoveryChoice.discoveryChoice { transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
 @media (hover: hover) {
   .discoveryTrigger.discoveryTrigger:not(:disabled):hover, .discoveryPanel > button:not(:disabled):hover { background: var(--accent-hover); border-color: var(--accent-hover); }
@@ -35,7 +40,7 @@
 }
 .discovery.discovery { width: 100%; margin: 0; z-index: auto; }
 .discovery.discovery .discoveryTrigger { display: none; }
-.discovery .discoveryPanel { position: static; display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+.discovery .discoveryPanel { position: static; display: flex; flex-flow: column nowrap; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
 .discovery.discovery .discoveryPanel h2 { font: 600 1rem/1.5 var(--font-geist-sans), Arial, sans-serif; letter-spacing: 0; }
 .discovery .discoveryPanel fieldset { display: flex; flex-direction: column; gap: 6px; }
 .discovery .discoveryPanel > button { flex: none; width: 100%; }
@@ -80,6 +85,7 @@
     border-radius: 12px;
     background: var(--surface);
   }
+  .discovery .discoveryPanel > * { flex-shrink: 0; }
   .discoveryArrow { transform: rotate(180deg); transition: transform 220ms ease; }
   .discoveryTrigger[aria-expanded=true] .discoveryArrow { transform: rotate(0deg); }
   .discovery .discoveryChoice:focus-within,

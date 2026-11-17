@@ -958,6 +958,32 @@ namespace backend.Data.Migrations
                     b.ToTable("posting_appeals", (string)null);
                 });
 
+            modelBuilder.Entity("Backend.Models.PromptIdea", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SubmittedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmittedById");
+
+                    b.HasIndex("CreatedAt", "Id");
+
+                    b.ToTable("prompt_ideas", (string)null);
+                });
+
             modelBuilder.Entity("Backend.Models.RemovedCommentReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1027,6 +1053,21 @@ namespace backend.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_vote_snapshots_singleton", "\"Id\" = 1");
                         });
+                });
+
+            modelBuilder.Entity("Backend.Models.WeeklyPrompt", b =>
+                {
+                    b.Property<DateOnly>("WeekOf")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("IdeaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("WeekOf");
+
+                    b.HasIndex("IdeaId");
+
+                    b.ToTable("weekly_prompts", (string)null);
                 });
 
             modelBuilder.Entity("Backend.Models.AnimalProfile", b =>
@@ -1248,6 +1289,25 @@ namespace backend.Data.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Backend.Models.PromptIdea", b =>
+                {
+                    b.HasOne("Backend.Models.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("SubmittedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Backend.Models.WeeklyPrompt", b =>
+                {
+                    b.HasOne("Backend.Models.PromptIdea", "Idea")
+                        .WithMany()
+                        .HasForeignKey("IdeaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Idea");
                 });
 
             modelBuilder.Entity("Backend.Models.Photo", b =>

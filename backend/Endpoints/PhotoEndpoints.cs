@@ -59,6 +59,7 @@ public static class PhotoEndpoints
         if (files.Count < 1 || files.Count > (profile ? 1 : 10) || files.Sum(x => x.Length) > 50 * 1024 * 1024)
             return Results.BadRequest(new { message = profile ? "Choose one profile picture." : "Choose 1–10 images, up to 50 MB total." });
         var descriptions = form["descriptions"];
+        var ideaOfTheWeek = !profile && form["ideaOfTheWeek"] == "true";
         if (!profile && descriptions.Count != files.Count) return Results.BadRequest(new { message = "Include a description field for each image (it may be empty)." });
         var animalIds = form["animalIds"];
         Guid[][] animalIdsByPhoto = [];
@@ -99,6 +100,14 @@ public static class PhotoEndpoints
         {
         var file = files[index];
         var description = profile ? "" : descriptions[index] ?? "";
+        if (ideaOfTheWeek)
+        {
+            description = description.TrimEnd();
+            if (!description.EndsWith(PromptEndpoints.IdeaOfTheWeekTags, StringComparison.Ordinal))
+                description = description.Length == 0 ? PromptEndpoints.IdeaOfTheWeekTags : $"{description}\n\n{PromptEndpoints.IdeaOfTheWeekTags}";
+            if (description.Length > 2000)
+                return Results.BadRequest(new { message = "Shorten the photo description to leave room for the Idea of the Week tags." });
+        }
         if (description.Length > 2000) return Results.BadRequest(new { message = "Descriptions must be at most 2,000 characters." });
         var validationError = Validate(file);
         if (validationError is not null)

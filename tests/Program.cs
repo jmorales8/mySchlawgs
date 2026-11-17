@@ -227,12 +227,12 @@ try {
     await Check(await second.PutAsJsonAsync(quotePath, new { commentId = quoteCommentId }), HttpStatusCode.Forbidden, "comment author cannot select someone else's post quote");
     await db.Users.Where(u => u.Id == thirdId).ExecuteUpdateAsync(s => s.SetProperty(u => u.IsAdmin, true));
     await Check(await third.PutAsJsonAsync(quotePath, new { commentId = quoteCommentId }), HttpStatusCode.Forbidden, "admin cannot choose another author's quote");
-    await Check(await first.PutAsJsonAsync(quotePath, new { commentId = quoteCommentId }), HttpStatusCode.NoContent, "post author selects quote");
-    await Check(await first.PutAsJsonAsync(quote2Path, new { commentId = quoteCommentId }), HttpStatusCode.NoContent, "each photo has independent quote");
+    await Check(await first.PutAsJsonAsync(quotePath, new { commentId = quoteCommentId }), HttpStatusCode.BadRequest, "cannot feature a comment on a different photo in the same post");
+    await Check(await first.PutAsJsonAsync(quote2Path, new { commentId = quoteCommentId }), HttpStatusCode.NoContent, "post author features the comment on its photo");
     await Check(await second.PatchAsJsonAsync($"/api/posts/{postId}/comments/{quoteCommentId}", new { body = "An edited best quote" }), HttpStatusCode.NoContent, "author edits featured comment");
     var quotes = await Check(await anonymous.GetAsync($"/api/posts/{postId}/activity"), HttpStatusCode.OK, "quotes public without login");
     var slideComment = quotes.GetProperty("comments").EnumerateArray().Single(c => c.GetProperty("id").GetGuid() == quoteCommentId);
-    if (slideComment.GetProperty("slideNumber").GetInt32() != 2 || slideComment.GetProperty("photoId").GetGuid() != photo2 || quotes.GetProperty("bestQuotes").GetArrayLength() != 2 || quotes.GetProperty("canChooseQuote").GetBoolean()) throw new Exception("Slide or quote metadata incorrect");
+    if (slideComment.GetProperty("slideNumber").GetInt32() != 2 || slideComment.GetProperty("photoId").GetGuid() != photo2 || quotes.GetProperty("bestQuotes").GetArrayLength() != 1 || quotes.GetProperty("canChooseQuote").GetBoolean()) throw new Exception("Slide or quote metadata incorrect");
     if (slideComment.GetProperty("body").GetString() != "An edited best quote" || quotes.GetProperty("bestQuotes").EnumerateArray().Any(q => q.GetProperty("commentId").GetGuid() != quoteCommentId)) throw new Exception("Editing detached the featured quote");
     await Check(await first.PutAsJsonAsync(quotePath, new { commentId = comment.GetProperty("id").GetGuid() }), HttpStatusCode.NoContent, "replaces single quote for photo");
     if (await db.Photos.Where(p => p.PostId == postId && p.BestQuoteCommentId != null).CountAsync() != 2) throw new Exception("Quote replacement changed other slide");

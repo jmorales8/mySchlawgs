@@ -1,0 +1,55 @@
+.weekly {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin-top: 4px;
+  min-width: 0;
+  font-size: .875rem;
+}
+
+.weekly h3, .weekly p, .ideaForm p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.prompt {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--soft);
+  white-space: pre-wrap;
+}
+
+.prompt strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ideaForm label {
+  display: block;
+  font-weight: 600;
+}
+
+.ideaForm textarea {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.weekly .ideaForm input[type=text] {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 10px;
+}
+
+.ideaForm button {
+  margin-top: 8px;
+  min-height: 44px;
+}
+
+.ideaForm p {
+  margin-top: 8px;
+}
+
+.error {
+  color: var(--error-ink);
+}

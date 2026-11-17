@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { api } from "../api";
 import { usePhotoFeed, type Feed } from "../../hooks/use-photo-feed";
 import { useFeedCaughtUp } from "../../hooks/use-feed-caught-up";
-import RandomPost from "./feed/random-post";
+import RandomPost, { type DiscoveryCategory } from "./feed/random-post";
 import MySchlawgs from "./profiles/my-schlawgs";
 import VoteLeaders from "./profiles/vote-leaders";
 import ProfileCropper from "../photos/profile-cropper";
@@ -39,7 +39,7 @@ function subscribeMobileNavigation(onChange: () => void) {
 function mobileNavigationSnapshot() { return window.matchMedia("(max-width: 760px)").matches; }
 function serverNavigationSnapshot() { return false; }
 
-export default function Community({ postId, discovery, notificationCommentId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; discovery?: "popular" | "niche" | "relevant"; initialFeed?: Feed }) {
+export default function Community({ postId, discovery, notificationCommentId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; discovery?: DiscoveryCategory; initialFeed?: Feed }) {
   const router = useRouter();
   const showFeedNavigation = !postId || !!discovery;
   const mobileNavigation = useSyncExternalStore(subscribeMobileNavigation, mobileNavigationSnapshot, serverNavigationSnapshot);
@@ -59,6 +59,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [descriptionMode, setDescriptionMode] = useState<"individual" | "shared">("individual");
   const [sharedDescription, setSharedDescription] = useState("");
+  const [ideaOfTheWeek, setIdeaOfTheWeek] = useState(false);
   const [animalProfilesResult, setAnimalProfilesResult] = useState<{ ownerId: string; items: AnimalOption[]; failed: boolean } | null>(null);
   const animalProfilesRequest = useRef(0);
   const userId = user?.id;
@@ -160,7 +161,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
   }
 
   function updateDrafts(next: Draft[]) { draftRef.current = next; setDrafts(next); }
-  const clearDrafts = useCallback(() => { draftRef.current.forEach(d => URL.revokeObjectURL(d.url)); draftRef.current = []; setDrafts([]); setSharedDescription(""); setDescriptionMode("individual"); if (fileRef.current) fileRef.current.value = ""; }, []);
+  const clearDrafts = useCallback(() => { draftRef.current.forEach(d => URL.revokeObjectURL(d.url)); draftRef.current = []; setDrafts([]); setSharedDescription(""); setDescriptionMode("individual"); setIdeaOfTheWeek(false); if (fileRef.current) fileRef.current.value = ""; }, []);
 
   useEffect(() => {
     if (!composerClosing) return;
@@ -211,6 +212,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
     const data = new FormData();
     drafts.forEach(d => { data.append("files", d.file); data.append("descriptions", descriptionMode === "shared" ? sharedDescription : d.description); });
     data.append("animalIds", JSON.stringify(drafts.map(d => d.animalIds)));
+    if (ideaOfTheWeek) data.append("ideaOfTheWeek", "true");
     try { await api("/api/photos", { method: "POST", body: data }); setComposerClosing("uploaded"); if (!postId) { chooseFeed("latest"); if (feed === "latest") await refresh(); } }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -322,6 +324,11 @@ export default function Community({ postId, discovery, notificationCommentId, in
           <h2 id="composer-title">What&apos;s your schlawg up to?</h2><p className={sharedStyles.muted}>Add up to 10 photos with one shared description or a story for each. 10 MB per photo, 50 MB total. Your draft stays here if you close this window.</p>
           {error && <ErrorToast key={error} message={error} />}
           <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>+ Choose photos<input ref={fileRef} type="file" multiple accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" disabled={busy} onChange={e => chooseFiles(e.target.files)} /></label>
+          <label className={composerStyles.weeklyIdeaOption}>
+            <input type="checkbox" checked={ideaOfTheWeek} disabled={busy} onChange={event => setIdeaOfTheWeek(event.target.checked)} />
+            Post for Idea of the Week
+          </label>
+          {ideaOfTheWeek && <p className={sharedStyles.muted}>Adds #Idea of the week #IOTW to each photo description.</p>}
           {drafts.length > 1 && <fieldset className={composerStyles.descriptionOptions} disabled={busy}>
             <legend>Photo descriptions</legend>
             <label><input type="radio" name="descriptionMode" checked={descriptionMode === "individual"} onChange={() => setDescriptionMode("individual")} />Individual description for each photo</label>
@@ -396,7 +403,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
             <Link href="/privacy">Privacy</Link>
           </nav>
         )}
-        <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations" }[discovery] : feed === "following" ? "Following" : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
+        <div className={layoutStyles.feedHeading}><div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations", iotw: "#Idea of the Week" }[discovery] : feed === "following" ? "Following" : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>{postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}</div>
         {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : feed === "following" ? "posts from schlawg bill posters you follow" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "following" ? "No posts from followed posters yet." : feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : feed === "following" ? "Open a poster’s avatar menu in Latest moments to follow them." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} notificationCommentId={notificationCommentId} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
         {!postId && ready && !feedLoading && !feedError && photos.length > 0 && (feed === "latest" || user) && <FeedEnding key={`${user?.id ?? "guest"}-${feed}`} />}
       </section>

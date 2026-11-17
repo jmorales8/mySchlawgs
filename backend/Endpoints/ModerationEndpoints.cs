@@ -50,6 +50,7 @@ public static class ModerationEndpoints
             if (!await db.Users.AnyAsync(u => u.Id == id && (u.IsAdmin || u.IsModerator), context.HttpContext.RequestAborted)) return Results.Json(new { message = "Only moderators and admins can access this page." }, statusCode: 403);
             return await next(context);
         });
+        moderation.MapPromptModeration();
         moderation.MapGet("/reports", async (int? page, AppDbContext db, CancellationToken ct) => {
             var offset = Math.Clamp(page ?? 0, 0, 100000) * 20;
             return Results.Ok(await db.Posts.IgnoreQueryFilters().AsSplitQuery()

@@ -12,6 +12,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<PostingAppeal> PostingAppeals => Set<PostingAppeal>();
+    public DbSet<PromptIdea> PromptIdeas => Set<PromptIdea>();
+    public DbSet<WeeklyPrompt> WeeklyPrompts => Set<WeeklyPrompt>();
     public DbSet<PosterFollow> PosterFollows => Set<PosterFollow>();
     public DbSet<UsernameBan> UsernameBans => Set<UsernameBan>();
     public DbSet<Post> Posts => Set<Post>();
@@ -26,6 +28,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var idea = modelBuilder.Entity<PromptIdea>();
+        idea.ToTable("prompt_ideas");
+        idea.Property(i => i.Text).HasMaxLength(240);
+        idea.HasIndex(i => new { i.CreatedAt, i.Id });
+        idea.HasOne<AppUser>().WithMany().HasForeignKey(i => i.SubmittedById).OnDelete(DeleteBehavior.SetNull);
+
+        var prompt = modelBuilder.Entity<WeeklyPrompt>();
+        prompt.ToTable("weekly_prompts");
+        prompt.HasKey(p => p.WeekOf);
+        prompt.HasOne(p => p.Idea).WithMany().HasForeignKey(p => p.IdeaId).OnDelete(DeleteBehavior.Restrict);
+
         var commentReport = modelBuilder.Entity<CommentReport>();
         commentReport.ToTable("comment_reports");
         commentReport.HasKey(r => new { r.CommentId, r.ReporterId });

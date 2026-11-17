@@ -88,10 +88,10 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
   const notifiedPosition = ordered.findIndex(({ comment }) => comment.id === notificationCommentId) + 1;
   const visibleLimit = commentLimit ?? Math.max(commentPageSize, Math.ceil(notifiedPosition / commentPageSize) * commentPageSize);
 
-  async function chooseQuote(commentId: string | null) {
+  async function chooseQuote(targetPhotoId: string, commentId: string | null) {
     setBusy(true); setError("");
     try {
-      await api(`${url}/photos/${photoId}/quote`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commentId }) });
+      await api(`${url}/photos/${targetPhotoId}/quote`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ commentId }) });
       await reload();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -151,7 +151,7 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
     {quote && <figure className={styles.bestQuote}>
       <figcaption className={styles.quoteMarker} aria-label="Best quote" title="Best quote"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.2L5.8 21 7 14.2 2 9.3l6.9-1L12 2Z" /></svg></figcaption>
       <FeaturedQuote key={`${photoId}-${quote.id}-${quote.body}`} body={quote.body} username={quote.username} />
-      {activity?.canChooseQuote && <CommentOptions label="Best quote options"><button type="button" disabled={busy} onClick={() => void chooseQuote(null)}>Remove best quote</button></CommentOptions>}
+      {activity?.canChooseQuote && <CommentOptions label="Best quote options"><button type="button" disabled={busy} onClick={() => void chooseQuote(photoId, null)}>Remove best quote</button></CommentOptions>}
     </figure>}
   </div>, quoteTarget)}<section className={styles.social} aria-label="Post reactions and comments">
     {quoteTarget && createPortal(<div className={styles.commentToastRegion} role="status" aria-atomic="true">
@@ -224,13 +224,16 @@ export default function PostSocial({ quoteTarget, postId, userId, photoId, slide
       {activity && !ordered.length && <p className={styles.message} role="status">{commentPhoto ? "No comments on this photo yet." : "No comments yet."}</p>}
       {ordered.slice(0, visibleLimit).map(({ comment, depth }) => {
         const notified = comment.id === notificationCommentId;
+        const commentPhotoId = comment.photoId;
+        const canFeature = activity?.canChooseQuote && commentPhotoId && photoIds.includes(commentPhotoId);
+        const isFeatured = activity?.bestQuotes.some(quote => quote.photoId === commentPhotoId && quote.commentId === comment.id);
         return <article key={comment.id} ref={notified ? notifiedCommentRef : undefined} data-notified={notified || undefined} data-attention={(notified && !noticeSeen && showComments) || undefined} onPointerEnter={notified ? () => setNoticeSeen(true) : undefined} onFocus={notified ? () => setNoticeSeen(true) : undefined} className={`${styles.comment} ${depth ? styles.reply : ""} ${editingId === comment.id ? styles.editTarget : ""}`} style={{ marginLeft: `${Math.min(depth, 3) * 12}px` }}>
         {comment.isReply && <small className={styles.replyContext}>{comment.parentCommentId ? `↳ Reply to @${comments.find(parent => parent.id === comment.parentCommentId)?.username ?? "comment"}` : "↳ Original comment removed"}</small>}
         <div className={styles.commentContent}>
         <div className={styles.commentHeader}><strong>@{comment.username}</strong><time dateTime={comment.createdAt} title={new Date(comment.createdAt).toLocaleString()}>{new Date(comment.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</time>
           {photoCount > 1 && comment.slideNumber && <span className={styles.slideBadge}>Photo {comment.slideNumber}</span>}
-          {(activity?.canChooseQuote || comment.canEdit || comment.canDelete || (userId && comment.authorId !== userId)) && <CommentOptions label={`Options for comment by @${comment.username}`}>
-            {activity?.canChooseQuote && <button type="button" disabled={busy || quoteId === comment.id} onClick={() => void chooseQuote(comment.id)}>{quoteId === comment.id ? "Selected best quote" : photoCount > 1 ? `Choose as best quote for photo ${slideNumber}` : "Choose as best quote"}</button>}
+          {(canFeature || comment.canEdit || comment.canDelete || (userId && comment.authorId !== userId)) && <CommentOptions label={`Options for comment by @${comment.username}`}>
+            {canFeature && <button type="button" disabled={busy || isFeatured} onClick={() => void chooseQuote(commentPhotoId, comment.id)}>{isFeatured ? "Selected best quote" : photoCount > 1 ? `Choose as best quote for photo ${comment.slideNumber}` : "Choose as best quote"}</button>}
             {comment.canEdit && !user?.postingRestrictedAt && <button type="button" disabled={busy || editingId === comment.id} onClick={() => { setEditingId(comment.id); setReplyTo(null); setRemoval(null); }}>Edit comment</button>}
             {comment.canDelete && <button type="button" disabled={busy} onClick={() => { if (user?.isAdmin && activity?.canModerate) void removeComment(comment.id); else setRemoval({ id: comment.id, report: false }); }}>Remove comment{user?.isAdmin && activity?.canModerate ? " · Admin" : ""}</button>}
             {userId && comment.authorId !== userId && <button type="button" disabled={busy} onClick={() => setRemoval({ id: comment.id, report: true })}>Report comment</button>}
