@@ -282,7 +282,14 @@ export default function Community({ postId, discovery, notificationCommentId, in
     </div>
       {showFeedNavigation && ready && user && (
         <button type="button" className={layoutStyles.mobilePostButton} disabled={busy || !!user.postingRestrictedAt} aria-haspopup="dialog" onClick={openPostComposer}>
-          <span aria-hidden="true">📷+</span>Post
+          <span className={layoutStyles.mobilePostIcon} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 9h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h2l1.5-2.5h6L16 9" />
+              <circle cx="11.5" cy="14" r="2.75" />
+              <path d="M20 2v5m-2.5-2.5h5" />
+            </svg>
+          </span>
+          Post
         </button>
       )}
       {mobileNavigation && !postId && <VoteLeaders compact />}
