@@ -1,0 +1,9 @@
+**
+!dotnet-tools.json
+!backend/
+!backend/**
+backend/bin/
+backend/obj/
+backend/**/.env*
+backend/**/*.local.json
+backend/appsettings.Development.json

@@ -51,6 +51,18 @@ Run `npm run db:setup` to apply the email migration, then `npm run dev:docker` t
 
 Production configuration uses backend environment variables `Resend__ApiKey`, `Resend__From`, and `EmailVerification__AppUrl` (the actual public HTTPS frontend origin). Buying the domain does not deploy the site: until hosting is connected, use the local URL on the same computer as the development app. Run EF migrations during deployment before starting the updated backend.
 
+## Backend container behind an HTTPS edge
+
+Build the .NET 10 image from the repository root. On Render, set the Dockerfile path to `backend/Dockerfile` and keep the Docker build context at the repository root.
+
+```sh
+docker build -f backend/Dockerfile -t myschlawgs-backend .
+```
+
+Use a private backend service. The hosting edge serves HTTPS and redirects public HTTP requests. The Next.js service forwards `/api` to the backend over the private network on port 8080. Set `Hosting__EdgeTerminatesHttps=true` on the backend to skip ASP.NET's own redirect on that private connection. Without this setting, Production keeps its usual HTTPS redirection. The container defaults to `ASPNETCORE_ENVIRONMENT=Production`, which requires Turnstile configuration and sets Secure session cookies.
+
+Supply `ConnectionStrings__Postgres`, the Production CAPTCHA settings, and any Resend settings as runtime environment variables. Configure the backend pre-deploy command as `./efbundle` to apply migrations using the configured PostgreSQL connection before the API starts.
+
 Verification links expire after one hour, are single-use, and are replaced by a new request. Only their SHA-256 hashes are stored. Sending is limited to once per minute and five requests per account per hour. A replacement email does not change the verified address until confirmed. Confirmed addresses are unique across accounts. Emails are available only through authenticated email settings, never public profile responses.
 
 ### Password recovery

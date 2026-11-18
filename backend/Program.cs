@@ -92,7 +92,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
+// The hosting edge redirects public HTTP when the API is reachable only on a private network.
+if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>("Hosting:EdgeTerminatesHttps"))
+    app.UseHttpsRedirection();
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
