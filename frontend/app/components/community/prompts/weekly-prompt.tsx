@@ -1,24 +1,34 @@
 "use client";
 
-import { useAccount } from "../../../contexts/account-context";
-import { useApiQuery } from "../../../hooks/use-api-query";
-import PromptIdeaForm from "./prompt-idea-form";
+import { useState } from "react";
+import { useWeeklyPrompt } from "../../../hooks/use-weekly-prompt";
 import styles from "./prompts.module.css";
 
-export type WeeklyPromptResponse = { prompt: { ideaId: string; text: string } | null };
+const dismissalKey = "myschlawgs-weekly-prompt-dismissed";
 
-export default function WeeklyPrompt({ enabled, onLogIn }: { enabled: boolean; onLogIn: () => void }) {
-  const { user, ready } = useAccount();
-  const { data, loading, error, refresh } = useApiQuery<WeeklyPromptResponse>("/api/weekly-prompt", { enabled, refetchInterval: 60_000 });
+function WeeklyPromptToast({ publication, text }: { publication: string; text: string }) {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(dismissalKey) === publication; }
+    catch { return false; }
+  });
 
-  return <section className={styles.weekly} aria-label="Add Yours">
-    <h3>Add Yours</h3>
-    {loading ? <p role="status">Loading this week’s prompt…</p> : error ? (
-      <p className={styles.error} role="status">{error} <button type="button" onClick={() => void refresh()}>Retry</button></p>
-    ) : data?.prompt ? (
-      <p className={styles.prompt}><strong>This week’s prompt</strong>{data.prompt.text}</p>
-    ) : <p>No prompt has been picked for this week yet.</p>}
-    {user && !user.postingRestrictedAt && <PromptIdeaForm />}
-    {ready && !user && <p><a href="#account" onClick={onLogIn}>Log in</a> to suggest a prompt.</p>}
-  </section>;
+  function dismiss() {
+    setDismissed(true);
+    try { localStorage.setItem(dismissalKey, publication); }
+    catch { /* The toast can still be dismissed when browser storage is unavailable. */ }
+  }
+
+  if (dismissed) return null;
+  return <aside className={styles.promptToast} aria-label="Idea of the Week">
+    <p role="status"><strong>Idea of the Week</strong>{text}</p>
+    <button type="button" className={styles.dismissPrompt} onClick={dismiss}>Dismiss</button>
+  </aside>;
+}
+
+export default function WeeklyPrompt() {
+  const { data } = useWeeklyPrompt();
+  if (!data?.prompt) return null;
+  const { weekOf, ideaId, text } = data.prompt;
+  const publication = `${weekOf}:${ideaId}`;
+  return <WeeklyPromptToast key={publication} publication={publication} text={text} />;
 }

@@ -1,25 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "../components/api";
-import PromptIdeaForm from "../components/community/prompts/prompt-idea-form";
-import type { WeeklyPromptResponse } from "../components/community/prompts/weekly-prompt";
-import sharedStyles from "../components/community/community.module.css";
-import { useApiQuery } from "../hooks/use-api-query";
-import styles from "./page.module.css";
+import { api } from "../../api";
+import PromptIdeaForm from "./prompt-idea-form";
+import { useWeeklyPrompt } from "../../../hooks/use-weekly-prompt";
+import sharedStyles from "../community.module.css";
+import { useApiQuery } from "../../../hooks/use-api-query";
+import styles from "./prompts.module.css";
 
 type IdeaPage = {
   ideas: { id: string; text: string; username: string | null }[];
   hasMore: boolean;
 };
 
-export default function PromptIdeas({ isAdmin }: { isAdmin: boolean }) {
+export default function PromptIdeas({ isAdmin, compact = false }: { isAdmin: boolean; compact?: boolean }) {
   const [page, setPage] = useState(0);
   const [publishing, setPublishing] = useState<string>();
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const queue = useApiQuery<IdeaPage>(`/api/moderation/prompt-ideas?page=${page}`, { authenticated: true });
-  const weekly = useApiQuery<WeeklyPromptResponse>("/api/weekly-prompt", { refetchInterval: 60_000 });
+  const weekly = useWeeklyPrompt();
   const current = weekly.data?.prompt;
 
   async function publish(id: string) {
@@ -28,7 +28,6 @@ export default function PromptIdeas({ isAdmin }: { isAdmin: boolean }) {
     setNotice("");
     try {
       await api(`/api/moderation/weekly-prompt/${id}`, { method: "PUT" });
-      await weekly.refresh();
       setNotice("This week’s prompt was published.");
     } catch (cause) {
       setError((cause as Error).message);
@@ -37,14 +36,15 @@ export default function PromptIdeas({ isAdmin }: { isAdmin: boolean }) {
     }
   }
 
-  return <section className={sharedStyles.card} aria-label="Add Yours prompt ideas">
-    <h2>Add Yours prompt ideas</h2>
-    <p>Admins choose one prompt to show in Feeling bored? each week. The week starts Monday in Central time.</p>
+  return <section className={compact ? styles.compactQueue : sharedStyles.card} aria-label={compact ? "Choose the Idea of the Week" : "Add Yours prompt ideas"}>
+    {!compact && <>
+      <h2>Add Yours prompt ideas</h2>
+      <p>Admins choose one prompt to show at the top of the latest feed each week. The week starts Monday in Central time.</p>
+    </>}
     {weekly.loading ? <p role="status">Loading the current prompt…</p> : weekly.error ? (
       <p className={styles.error} role="alert">{weekly.error} <button type="button" onClick={() => void weekly.refresh()}>Retry</button></p>
-    ) : <p className={styles.promptText}><strong>This week’s prompt</strong><br />{current?.text ?? "No prompt selected."}</p>}
-    <PromptIdeaForm staff />
-    <h3>Submitted ideas</h3>
+    ) : !compact && <p className={styles.promptText}><strong>This week’s prompt</strong><br />{current?.text ?? "No prompt selected."}</p>}
+    {!compact && <><PromptIdeaForm staff /><h3>Submitted ideas</h3></>}
     {queue.loading && <p role="status">Loading ideas…</p>}
     {queue.error && <p className={styles.error} role="alert">{queue.error} <button type="button" onClick={() => void queue.refresh()}>Retry</button></p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
@@ -54,7 +54,7 @@ export default function PromptIdeas({ isAdmin }: { isAdmin: boolean }) {
       <p className={styles.promptText}>{idea.text}</p>
       <p className={sharedStyles.muted}>{idea.username ? `@${idea.username}` : "Former member"}</p>
       {current?.ideaId === idea.id ? <p>This week’s prompt</p> : isAdmin && (
-        <button type="button" disabled={!!publishing || weekly.loading || !!weekly.error} onClick={() => void publish(idea.id)}>
+        <button type="button" disabled={!!publishing || weekly.loading || weekly.refreshing || !!weekly.error} onClick={() => void publish(idea.id)}>
           {publishing === idea.id ? "Publishing…" : current ? "Replace this week’s prompt" : "Publish for this week"}
         </button>
       )}

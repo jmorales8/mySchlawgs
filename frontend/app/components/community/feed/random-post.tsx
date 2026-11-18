@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "../../api";
 import styles from "./random-post.module.css";
 import sharedStyles from "../community.module.css";
-import WeeklyPrompt from "../prompts/weekly-prompt";
+import PromptSuggestions from "../prompts/prompt-suggestions";
 
 const choices = [
   { value: "popular", title: "Popular", description: "5+ reactions and comments combined" },
@@ -72,7 +72,7 @@ export default function RandomPost({ postId, ready, initialCategory = "popular",
           </fieldset>
           <button type="button" disabled={busy || !ready} onClick={() => void discover()}>{busy ? "Finding a schlawg…" : category === "iotw" ? "Find a tagged post" : "Surprise me ↗"}</button>
           {error && <p className={styles.discoveryError} role="status">{error}</p>}
-          <WeeklyPrompt enabled={!collapsible || open} onLogIn={() => setOpen(false)} />
+          <PromptSuggestions onLogIn={() => setOpen(false)} />
         </div>
       </div>
     </div>

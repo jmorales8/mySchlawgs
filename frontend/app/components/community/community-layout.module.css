@@ -100,7 +100,7 @@
   .feedMenu { gap: 6px; }
 }
 .feedFrame { display: grid; grid-template-columns: 260px minmax(0, 780px); align-items: start; gap: clamp(28px, 4vw, 64px); width: calc(100% - 2 * var(--page-gutter)); max-width: 1140px; margin: 24px auto 64px; }
-.feedFrame > .nav { position: sticky; top: 24px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 28px; width: 100%; min-width: 0; margin: 0; padding: 0 20px 24px 0; border-bottom: 0; border-right: 1px solid var(--border); }
+.feedFrame > .nav { position: sticky; top: 24px; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; gap: 12px; width: 100%; min-width: 0; margin: 0; padding: 0 20px 24px 0; border-bottom: 0; border-right: 1px solid var(--border); }
 .feedFrame > .layout { display: flex; flex-direction: column; gap: 28px; width: 100%; min-width: 0; margin: 0; }
 .feedFrame .content { width: 100%; }
 .feedFrame .feedHeading { margin-top: 0; }
@@ -113,13 +113,14 @@
 @media (hover: hover) {
   .nav.nav .feedMenu button[aria-pressed=true]:not(:disabled):hover { background: #73465f; color: #fff; }
 }
-.nav.nav .feedMenu .sharePostButton { margin-top: 12px; background: var(--accent); color: var(--on-accent); }
+.nav.nav .feedMenu .sharePostButton { margin-top: 2px; background: var(--accent); color: var(--on-accent); }
 .feedLinks { display: flex; flex-wrap: wrap; gap: 12px 16px; margin-bottom: 16px; }
 .feedLinks a, .feedLinks button { color: var(--muted); font-size: .8125rem; text-decoration: none; }
 .feedLinks a:hover { text-decoration: underline; }
 .profileSummary { display: none; }
 @media (min-width: 761px) {
   .nav .brandGroup { display: flex; flex-direction: column; align-items: stretch; }
+  .feedFrame > .nav > .brandGroup { margin-bottom: 16px; }
   .nav .accountMenu { width: 100%; }
   .nav .accountTrigger { display: flex; align-items: center; gap: 14px; width: 100%; height: auto; min-height: 54px; border-radius: 10px; }
   .nav .accountTrigger .avatar { flex-shrink: 0; }

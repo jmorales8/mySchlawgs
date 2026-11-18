@@ -1,7 +1,3 @@
 /* Component styles; imported class names preserve shared ancestor selectors. */
 
 .error { padding: 16px 20px; border-radius: 10px; font-size: 14px; line-height: 1.5; margin: 0 0 20px; background: var(--error-surface); color: var(--error-ink); }
-.promptIdea { padding: 12px 0; border-top: 1px solid var(--border); }
-.promptIdea p { margin: 0 0 8px; }
-.promptText { overflow-wrap: anywhere; white-space: pre-wrap; }
-.promptPager { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

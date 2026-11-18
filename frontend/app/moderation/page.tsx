@@ -10,7 +10,7 @@ import DisputeForm from "../components/community/moderation/dispute-form";
 import sharedStyles from "../components/community/community.module.css";
 import styles from "./page.module.css";
 import AccountBan from "./account-ban";
-import PromptIdeas from "./prompt-ideas";
+import PromptIdeas from "../components/community/prompts/prompt-ideas";
 
 function ReviewButton({ path, label, onSaved }: { path: string; label: string; onSaved: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);

@@ -21,7 +21,7 @@ public static class PromptEndpoints
             context.Response.Headers.CacheControl = "no-store";
             var weekOf = CurrentWeek(clock);
             var prompt = await db.WeeklyPrompts.Where(p => p.WeekOf == weekOf)
-                .Select(p => new { p.IdeaId, p.Idea.Text }).SingleOrDefaultAsync(ct);
+                .Select(p => new { p.WeekOf, p.IdeaId, p.Idea.Text }).SingleOrDefaultAsync(ct);
             return Results.Ok(new { prompt });
         });
 

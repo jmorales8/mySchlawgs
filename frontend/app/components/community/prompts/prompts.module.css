@@ -8,21 +8,85 @@
   font-size: .875rem;
 }
 
-.weekly h3, .weekly p, .ideaForm p {
+.weekly p, .ideaForm p {
   margin: 0;
   overflow-wrap: anywhere;
 }
 
-.prompt {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--soft);
+.promptToast {
+  position: fixed;
+  z-index: 29;
+  top: calc(12px + env(safe-area-inset-top));
+  right: max(var(--page-gutter), env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(420px, calc(100% - 2 * var(--page-gutter) - env(safe-area-inset-right)));
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top));
+  overflow-y: auto;
+  padding: 10px 12px 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 4px 20px #0003;
+  animation: promptToastIn 200ms ease-out both;
+}
+
+.promptToast p {
+  min-width: 0;
+  margin: 0;
+  font-size: .875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-.prompt strong {
+.promptToast strong {
   display: block;
   margin-bottom: 4px;
+}
+
+.promptToast .dismissPrompt {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--soft);
+  color: var(--link);
+}
+
+@keyframes promptToastIn { from { opacity: 0; transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .promptToast { animation: none; }
+}
+
+.adminSummary {
+  padding: 8px 0;
+  color: var(--link);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adminSummary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.compactQueue { margin-block: 8px; }
+.promptIdea { padding: 12px 0; border-top: 1px solid var(--border); }
+.promptIdea p, .weekly .promptIdea p { margin: 0 0 8px; }
+.promptText { overflow-wrap: anywhere; white-space: pre-wrap; }
+.promptPager { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+@media (min-width: 761px) {
+  .compactQueue {
+    max-height: min(40dvh, 320px);
+    overflow-y: auto;
+    scrollbar-color: var(--control-border) var(--surface);
+  }
 }
 
 .ideaForm label {

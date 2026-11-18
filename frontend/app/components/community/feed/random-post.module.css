@@ -40,7 +40,7 @@
 }
 .discovery.discovery { width: 100%; margin: 0; z-index: auto; }
 .discovery.discovery .discoveryTrigger { display: none; }
-.discovery .discoveryPanel { position: static; display: flex; flex-flow: column nowrap; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+.discovery .discoveryPanel { position: static; display: flex; flex-flow: column nowrap; align-items: stretch; gap: 12px; width: 100%; max-width: none; padding: 4px 0 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .discovery.discovery .discoveryPanel h2 { font: 600 1rem/1.5 var(--font-geist-sans), Arial, sans-serif; letter-spacing: 0; }
 .discovery .discoveryPanel fieldset { display: flex; flex-direction: column; gap: 6px; }
 .discovery .discoveryPanel > button { flex: none; width: 100%; }
@@ -64,6 +64,7 @@
   .discovery.discovery .discoveryTrigger[aria-expanded=true],
   .discovery.discovery .discoveryTrigger:hover { background: var(--soft); }
   .discoveryReveal {
+    --discovery-nav-clearance: 96px;
     position: absolute;
     inset: auto var(--page-gutter) calc(100% + 8px);
     display: grid;
@@ -76,14 +77,30 @@
     visibility: visible;
     transition-delay: 0s;
   }
-  .discoveryClip { display: block; min-height: 0; overflow: hidden; }
-  .discovery .discoveryPanel {
-    max-height: 65dvh;
-    overflow-y: auto;
-    padding: 16px;
+  .discoveryClip {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
+  }
+  .discoveryReveal[data-open=true] .discoveryClip {
+    max-height: min(65dvh, calc(100dvh - var(--discovery-nav-clearance) - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  }
+  .discovery .discoveryPanel {
+    width: auto;
+    min-height: 0;
+    justify-content: flex-start;
+    margin: 4px;
+    padding: 12px;
+  }
+  .discoveryReveal[data-open=true] .discoveryPanel {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scroll-padding-block: 12px;
+    scrollbar-color: var(--control-border) var(--surface);
   }
   .discovery .discoveryPanel > * { flex-shrink: 0; }
   .discoveryArrow { transform: rotate(180deg); transition: transform 220ms ease; }
@@ -93,4 +110,7 @@
   @media (prefers-reduced-motion: reduce) {
     .discoveryReveal, .discoveryArrow { transition: none; }
   }
+}
+@media (max-width: 480px) {
+  .discoveryReveal { --discovery-nav-clearance: 150px; }
 }
