@@ -8,6 +8,6 @@ type Inbox = { unreadCount: number; reactionPeople: number; commentPeople: numbe
 export function useNotifications(page = 0) {
   return useApiQuery<Inbox>(`/api/notifications?page=${page}`, {
     authenticated: true,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 }

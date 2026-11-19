@@ -47,7 +47,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
   const [selected, setSelected] = useState<SchlawgProfile | null>(null);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["vote-summary"], queryFn: ({ signal }) => api<Summary>("/api/votes/summary", { signal }),
-    staleTime: 60_000, refetchInterval: 60_000, retry: false,
+    staleTime: 300_000, refetchInterval: 300_000, retry: false,
   });
   function dismissCountToast() {
     countToastDismissedInMemory = true;
