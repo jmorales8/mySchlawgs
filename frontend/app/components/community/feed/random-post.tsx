@@ -57,7 +57,11 @@ export default function RandomPost({ postId, ready, initialCategory = "popular",
 
   return <section ref={discoveryRef} className={styles.discovery} aria-label="Feeling bored?">
     <button ref={triggerRef} type="button" className={styles.discoveryTrigger} aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(!open)}>
-      Feeling bored? <span className={styles.discoveryArrow} aria-hidden="true">▾</span>
+      <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="m15.5 8.5-2 5-5 2 2-5z" />
+      </svg>
+      Explore
     </button>
     <div id={panelId} className={styles.discoveryReveal} data-open={open} inert={collapsible && !open}>
       <div className={styles.discoveryClip}>

@@ -146,24 +146,41 @@
 .nav .profileSummary { display: block; min-width: 0; overflow-wrap: anywhere; }
 
 .accountDropdown.accountDropdown > :is(a, button, label):first-child { border-radius: 11px 11px 0 0; }
-.mobileFeedLabel, .mobileAccountName, .nav .mobilePostButton { display: none; }
+.mobileFeedLabel, .mobileFeedIcon, .mobileAccountName, .nav .mobilePostButton { display: none; }
 .bottomNavigation { display: contents; }
 
 @media (max-width: 760px) {
   .nav .brand { font-size: clamp(1.125rem, 5.6vw, 1.5rem); }
-  .nav .accountMenu { flex: 0 0 48px; width: 48px; }
-  .nav .accountTrigger { justify-content: center; width: 48px; height: 48px; min-height: 48px; border-radius: 50%; }
-  .nav .accountTrigger .avatar { width: 44px; height: 44px; font-size: 1.25rem; }
+  .nav .accountMenu { flex: 0 0 clamp(46px, 16%, 72px); width: auto; min-width: 0; }
+  .nav .accountTrigger .avatar { width: 24px; height: 24px; font-size: .875rem; box-shadow: none; }
   .nav .accountTrigger .profileSummary, .nav .hamburger { display: none; }
   .nav .accountDropdown { left: auto; right: 0; width: min(290px, calc(100vw - 32px)); max-width: none; }
   .nav .mobileAccountName { display: block; padding: 14px 18px; border-bottom: 1px solid var(--border); color: var(--foreground); font-weight: 600; overflow-wrap: anywhere; }
   .desktopFeedLabel { display: none; }
   .mobileFeedLabel { display: inline; }
-  .nav .feedMenu { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-bottom: 1px solid var(--border); }
-  .nav.nav .feedMenu button { width: 100%; min-height: 46px; padding: 10px 4px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; text-align: center; }
-  .nav.nav .feedMenu button[aria-pressed=true] { background: transparent; color: var(--link); border-bottom-color: var(--accent); }
-  .nav.nav .feedMenu button:hover:not(:disabled) { background: var(--soft); color: var(--link); }
-  .nav.nav .feedMenu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .mobileFeedIcon { display: block; width: 24px; height: 24px; flex: none; }
+  .nav .feedMenu { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .nav.nav .feedMenu button,
+  .nav .accountTrigger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    min-height: 52px;
+    padding: 4px 1px;
+    border: 0;
+    border-radius: 10px;
+    color: var(--link);
+    font: 600 .6875rem/1.2 var(--font-geist-sans), Arial, sans-serif;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  .nav.nav .feedMenu button[aria-pressed=true],
+  .nav .accountTrigger[aria-expanded=true] { background: var(--selected); color: var(--link); }
+  .nav.nav .feedMenu button:focus-visible,
+  .nav .accountTrigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .nav.nav .feedMenu .sharePostButton { display: none; }
 }
 
@@ -233,20 +250,15 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
     min-height: 64px;
-    padding: 6px var(--page-gutter) calc(6px + env(safe-area-inset-bottom));
+    padding-block: 6px calc(6px + env(safe-area-inset-bottom));
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
     border-top: 1px solid var(--border);
     background: var(--surface);
     box-shadow: 0 -4px 20px #0002;
   }
-  .nav .bottomNavigation .feedMenu { flex: 1; min-width: 0; border-bottom: 0; }
-  .nav.nav .bottomNavigation .feedMenu button { border-top: 2px solid transparent; }
-  .nav.nav .bottomNavigation .feedMenu button[aria-pressed=true] {
-    border-bottom-color: transparent;
-    border-top: 2px solid var(--accent);
-    background: var(--soft);
-  }
+  .nav .bottomNavigation .feedMenu { flex: 1; min-width: 0; }
   .nav .bottomNavigation .accountDropdown {
     top: auto;
     bottom: calc(100% + 10px);
@@ -256,10 +268,6 @@
     animation: bottomMenuIn 160ms ease-out both;
   }
   .nav .bottomNavigation .accountDropdownClosing { animation: bottomMenuOut 160ms ease-in both; }
-}
-@media (max-width: 480px) {
-  .nav .bottomNavigation .feedMenu { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .feedFrame:has(.bottomNavigation[data-active="true"]) { padding-bottom: calc(106px + env(safe-area-inset-bottom)); }
 }
 @keyframes bottomMenuIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes bottomMenuOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(6px); } }
