@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import sharedStyles from "./community.module.css";
 import composerStyles from "./post-composer.module.css";
 import layoutStyles from "./community-layout.module.css";
@@ -32,6 +32,13 @@ import CreateProfileDialog from "../../account/animals/create-profile-dialog";
 type AnimalOption = { id: string; name: string; animalType: string; profilePhotoUrl: string | null };
 type Draft = { file: File; url: string; description: string; animalIds: string[] };
 
+const feedTabs = [
+  { feed: "latest", label: "Latest", desktopLabel: "Latest moments", icon: "M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" },
+  { feed: "interacted", label: "Activity", desktopLabel: "Liked / interacted", icon: "M2 12h5l3-7 4 14 3-7h5" },
+  { feed: "following", label: "Following", desktopLabel: "Following", icon: "M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1L12 21l8.8-8.3a5 5 0 0 0 0-7.1Z" },
+  { feed: "mine", label: "Photos", desktopLabel: "My photos", icon: "M3 4h18v16H3z M3 16l5-5 4 4 3-3 6 6 M16 8h.01" },
+] as const;
+
 function subscribeMobileNavigation(onChange: () => void) {
   const query = window.matchMedia("(max-width: 760px)");
   query.addEventListener("change", onChange);
@@ -42,6 +49,7 @@ function serverNavigationSnapshot() { return false; }
 
 export default function Community({ postId, discovery, notificationCommentId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; discovery?: DiscoveryCategory; initialFeed?: Feed }) {
   const router = useRouter();
+  const brandPathId = useId();
   const showFeedNavigation = !postId || !!discovery;
   const mobileNavigation = useSyncExternalStore(subscribeMobileNavigation, mobileNavigationSnapshot, serverNavigationSnapshot);
   const openTutorial = useTutorial();
@@ -245,7 +253,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
         else if (accountMenuOpen) closeAccountMenu();
         else { setAccountMenuClosing(false); setAccountMenuOpen(true); }
       }}>
-        <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
+        <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.mobileFeedLabel}>Account</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
       </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}><span className={layoutStyles.mobileAccountName}>@{user.username}</span>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}
             <Link href="/account/animals" onClick={closeAccountMenu}>Schlawg Garden</Link>
             <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
@@ -273,8 +281,11 @@ export default function Community({ postId, discovery, notificationCommentId, in
       <Link className={layoutStyles.brand} href="/" aria-label="mySchlawgs">
         <span className={layoutStyles.brandText}>mySchlawgs</span>
         {!postId && <svg className={layoutStyles.curvedBrand} viewBox="0 0 124 84" aria-hidden="true">
+          <defs>
+            <path id={brandPathId} d="M 14 75 V 60 Q 15 23 44 21 H 121" />
+          </defs>
           <text>
-            <textPath path="M 14 75 V 60 Q 15 23 44 21 H 121" textLength="136" lengthAdjust="spacingAndGlyphs">mySchlawgs</textPath>
+            <textPath href={`#${brandPathId}`} textLength="136" lengthAdjust="spacingAndGlyphs">mySchlawgs</textPath>
           </text>
         </svg>}
       </Link>
@@ -295,10 +306,11 @@ export default function Community({ postId, discovery, notificationCommentId, in
       {mobileNavigation && !postId && <VoteLeaders compact />}
       <div className={layoutStyles.bottomNavigation} data-active={mobileNavigation}>
       {showFeedNavigation && <div className={layoutStyles.feedMenu} role="group" aria-label="Choose your feed">
-          <button type="button" aria-pressed={!postId && feed === "latest"} onClick={() => navigateToFeed("latest")}><span className={layoutStyles.desktopFeedLabel}>Latest moments</span><span className={layoutStyles.mobileFeedLabel}>Latest</span></button>
-          <button type="button" aria-pressed={!postId && feed === "interacted"} onClick={() => navigateToFeed("interacted")}><span className={layoutStyles.desktopFeedLabel}>Liked / interacted</span><span className={layoutStyles.mobileFeedLabel}>Activity</span></button>
-          <button type="button" aria-pressed={!postId && feed === "following"} onClick={() => navigateToFeed("following")}>Following</button>
-          <button type="button" aria-pressed={!postId && feed === "mine"} onClick={() => navigateToFeed("mine")}>My photos</button>
+          {feedTabs.map(tab => <button key={tab.feed} type="button" aria-pressed={!postId && feed === tab.feed} onClick={() => navigateToFeed(tab.feed)}>
+            <span className={layoutStyles.desktopFeedLabel}>{tab.desktopLabel}</span>
+            <svg className={layoutStyles.mobileFeedIcon} viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={tab.icon} /></svg>
+            <span className={layoutStyles.mobileFeedLabel}>{tab.label}</span>
+          </button>)}
           {ready && user && <button type="button" className={layoutStyles.sharePostButton} disabled={busy || !!user.postingRestrictedAt} aria-haspopup="dialog" onClick={openPostComposer}>+ Share a post</button>}
         </div>}
       <RandomPost key={`random-${user?.id ?? "guest"}`} postId={postId} ready={ready && !busy} initialCategory={discovery} collapsible={mobileNavigation} />

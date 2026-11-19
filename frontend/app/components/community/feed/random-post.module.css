@@ -46,34 +46,46 @@
 .discovery .discoveryPanel > button { flex: none; width: 100%; }
 .discovery .discoveryError { text-align: left; }
 @media (max-width: 760px) {
-  .discovery.discovery { position: static; width: auto; }
+  .discovery.discovery { position: static; flex: 0 0 clamp(46px, 16%, 72px); width: auto; }
   .discovery.discovery .discoveryTrigger {
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
     gap: 4px;
-    min-height: 44px;
-    max-width: 105px;
-    padding: 4px 8px;
-    border-color: transparent;
+    width: 100%;
+    min-height: 52px;
+    padding: 4px 1px;
+    border: 0;
+    border-radius: 10px;
     background: transparent;
     color: var(--link);
-    font-size: .8125rem;
-    line-height: 1.25;
+    font: 600 .6875rem/1.2 var(--font-geist-sans), Arial, sans-serif;
     white-space: normal;
   }
-  .discovery.discovery .discoveryTrigger[aria-expanded=true],
-  .discovery.discovery .discoveryTrigger:hover { background: var(--soft); }
+  .discoveryTrigger svg { flex: none; }
+  .discovery.discovery .discoveryTrigger[aria-expanded=true] { background: var(--selected); }
+  @media (hover: hover) {
+    .discovery.discovery .discoveryTrigger[aria-expanded=false]:hover { background: var(--soft); }
+  }
+  .discovery.discovery .discoveryTrigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .discoveryReveal {
-    --discovery-nav-clearance: 96px;
+    --discovery-nav-clearance: 80px;
+    --discovery-duration: 200ms;
     position: absolute;
     inset: auto var(--page-gutter) calc(100% + 8px);
-    display: grid;
-    grid-template-rows: 0fr;
+    display: block;
+    opacity: 0;
+    transform: translateY(12px);
     visibility: hidden;
-    transition: grid-template-rows 220ms ease, visibility 0s linear 220ms;
+    transition:
+      transform var(--discovery-duration) cubic-bezier(.22, 1, .36, 1),
+      opacity var(--discovery-duration) ease,
+      visibility 0s linear var(--discovery-duration);
   }
   .discoveryReveal[data-open=true] {
-    grid-template-rows: 1fr;
+    opacity: 1;
+    transform: translateY(0);
     visibility: visible;
     transition-delay: 0s;
   }
@@ -85,8 +97,6 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
-  }
-  .discoveryReveal[data-open=true] .discoveryClip {
     max-height: min(65dvh, calc(100dvh - var(--discovery-nav-clearance) - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
   }
   .discovery .discoveryPanel {
@@ -95,22 +105,15 @@
     justify-content: flex-start;
     margin: 4px;
     padding: 12px;
-  }
-  .discoveryReveal[data-open=true] .discoveryPanel {
     overflow-y: auto;
     overscroll-behavior-y: contain;
     scroll-padding-block: 12px;
     scrollbar-color: var(--control-border) var(--surface);
   }
   .discovery .discoveryPanel > * { flex-shrink: 0; }
-  .discoveryArrow { transform: rotate(180deg); transition: transform 220ms ease; }
-  .discoveryTrigger[aria-expanded=true] .discoveryArrow { transform: rotate(0deg); }
   .discovery .discoveryChoice:focus-within,
   .discovery .discoveryPanel button:focus-visible { outline-offset: -3px; }
   @media (prefers-reduced-motion: reduce) {
-    .discoveryReveal, .discoveryArrow { transition: none; }
+    .discoveryReveal { transition: none; }
   }
-}
-@media (max-width: 480px) {
-  .discoveryReveal { --discovery-nav-clearance: 150px; }
 }

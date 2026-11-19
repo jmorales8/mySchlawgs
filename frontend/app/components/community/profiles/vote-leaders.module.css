@@ -16,6 +16,8 @@
 .podiumPlace .compactStatus { min-height: 44px; display: flex; align-items: center; justify-content: center; text-align: center; }
 .compactSummary h2 { min-width: 0; margin: 0; text-align: center; font: 600 .875rem/1.4 var(--font-geist-sans), Arial, sans-serif; }
 .podium .profile.podiumProfile { justify-content: center; gap: 10px; min-width: 44px; max-width: 100%; padding: 14px 0 0; font-size: .875rem; }
+.compactSummary .podiumProfiles { align-self: stretch; }
+.compactSummary .podiumProfile { width: max-content; }
 .summary .podium .podiumProfile, .podium[data-places="1"] .profile.podiumProfile, .podium[data-places="2"] .profile.podiumProfile {
   flex-direction: column;
   gap: 4px;
