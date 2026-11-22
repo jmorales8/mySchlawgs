@@ -12,6 +12,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<PhotoAnimalProfile> PhotoAnimalProfiles => Set<PhotoAnimalProfile>();
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<PostingAppeal> PostingAppeals => Set<PostingAppeal>();
+    public DbSet<BugReport> BugReports => Set<BugReport>();
     public DbSet<PromptIdea> PromptIdeas => Set<PromptIdea>();
     public DbSet<WeeklyPrompt> WeeklyPrompts => Set<WeeklyPrompt>();
     public DbSet<PosterFollow> PosterFollows => Set<PosterFollow>();
@@ -28,6 +29,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        var bugReport = modelBuilder.Entity<BugReport>();
+        bugReport.ToTable("bug_reports");
+        bugReport.Property(r => r.Title).HasMaxLength(120);
+        bugReport.Property(r => r.Encounter).HasMaxLength(2000);
+        bugReport.Property(r => r.Steps).HasMaxLength(4000);
+        bugReport.Property(r => r.Status).HasConversion<string>().HasMaxLength(16);
+        bugReport.HasIndex(r => new { r.Status, r.CreatedAt, r.Id });
+        bugReport.HasOne(r => r.Reporter).WithMany().HasForeignKey(r => r.ReporterId).OnDelete(DeleteBehavior.SetNull);
+
         var idea = modelBuilder.Entity<PromptIdea>();
         idea.ToTable("prompt_ideas");
         idea.Property(i => i.Text).HasMaxLength(240);

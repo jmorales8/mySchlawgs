@@ -44,7 +44,7 @@ export default function ModerationPage() {
   const comments = useCommentReports(commentPage);
   return <main className={sharedStyles.shell}><nav className={sharedStyles.nav}><Link href="/">← Back to community</Link></nav><div style={{ maxWidth: 900, margin: "auto", padding: 24 }}>
     <h1>Moderation queue</h1><p>Posts and comments are hidden from the community after three distinct reports.</p>
-    {user?.isAdmin && <AccountBan />}
+    {user?.isAdmin && <><p><Link href="/admin/bug-reports">Bug report queue</Link></p><AccountBan /></>}
     {user && (user.isAdmin || user.isModerator) && <PromptIdeas key={user.id} isAdmin={user.isAdmin} />}
     {loading && <p role="status">Loading reports…</p>}{error && <p className={styles.error} role="alert">{error}</p>}
     {!loading && !error && <>

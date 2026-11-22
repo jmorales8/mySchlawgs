@@ -1,0 +1,80 @@
+.content {
+  width: calc(100% - 2 * var(--page-gutter));
+  max-width: 680px;
+  margin-inline: auto;
+  padding-block: 28px 48px;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+  margin-top: 24px;
+}
+
+.form label,
+.field {
+  width: 100%;
+}
+
+.form label {
+  font-weight: 600;
+}
+
+.hint {
+  display: block;
+  color: var(--muted);
+  font-size: .875rem;
+  font-weight: 400;
+  margin-block: 4px;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-block: 16px;
+}
+
+.controls select {
+  min-height: 44px;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--control-border);
+  border-radius: 7px;
+  padding-inline: 10px;
+  font: inherit;
+}
+
+.report {
+  border-bottom: 1px solid var(--border);
+  padding-block: 16px;
+  overflow-wrap: anywhere;
+}
+
+.report h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.report summary {
+  cursor: pointer;
+  padding-block: 12px;
+  color: var(--accent);
+}
+
+.report dt {
+  font-weight: 600;
+}
+
+.report dd {
+  margin: 4px 0 16px;
+  white-space: pre-wrap;
+}
+
+.controls select:focus-visible,
+.report summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}

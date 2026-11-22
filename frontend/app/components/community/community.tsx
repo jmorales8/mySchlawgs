@@ -256,6 +256,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
         <Avatar user={user} className={layoutStyles.avatar} /><span className={layoutStyles.profileSummary}>@{user.username}</span><span className={layoutStyles.mobileFeedLabel}>Account</span><span className={layoutStyles.hamburger} aria-hidden="true"><span /><span /><span /></span>
       </summary>{accountMenuOpen && <div className={`${layoutStyles.accountDropdown}${accountMenuClosing ? ` ${layoutStyles.accountDropdownClosing}` : ""}`} aria-hidden={accountMenuClosing} inert={accountMenuClosing}><span className={layoutStyles.mobileAccountName}>@{user.username}</span>{(user.isAdmin || user.isModerator) && <Link href="/moderation">Moderation queue</Link>}
             <Link href="/account/animals" onClick={closeAccountMenu}>Schlawg Garden</Link>
+            <Link href="/account/report-bug" onClick={closeAccountMenu}>Report a bug</Link>
             <label className={`${layoutStyles.fileButton} ${composerStyles.fileButton}`}>Change profile picture<input aria-label="Change profile picture" disabled={busy} type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onChange={e => { chooseProfile(e.target.files?.[0]); e.target.value = ""; }} /></label>
             <ThemeToggle />
             {user.verifiedEmail ? <span className={layoutStyles.verifiedEmail}>Verified Email: {user.verifiedEmail}</span> : <Link href="/account/email" className={layoutStyles.textButton}>Verify email</Link>}
