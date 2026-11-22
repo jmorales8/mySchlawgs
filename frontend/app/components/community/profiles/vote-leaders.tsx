@@ -36,6 +36,10 @@ function VoteCountStatus({ updatedAt }: { updatedAt: string }) {
   return <>Last counted <time dateTime={updatedAt}>{new Date(updatedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>. New votes appear after the next count.</>;
 }
 
+function formatVotes(votes: number) {
+  return `${votes.toLocaleString()} ${votes === 1 ? "vote" : "votes"}`;
+}
+
 export default function VoteLeaders({ compact = false }: { compact?: boolean }) {
   const { user } = useAccount();
   const heading = useId();
@@ -83,8 +87,12 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
   const podium = <ol className={styles.podium} data-places={podiumGroups.length} aria-label="Schlawg of the Week podium">
     {podiumGroups.map((animals, index) => {
       const rank = ["1st", "2nd", "3rd"][index];
+      const votes = animals[0]?.votes;
       return <li key={rank} className={styles.podiumPlace} data-place={index + 1}>
-        <strong className={styles.rank}>{rank}</strong>
+        <div className={styles.podiumRank}>
+          <strong className={styles.rank}>{rank}</strong>
+          {compact && votes !== undefined && <span className={styles.podiumVotes}>{formatVotes(votes)}</span>}
+        </div>
         {animals.length ? <div className={styles.podiumProfiles}>
           {animals.map(animal => <button key={animal.id} type="button" className={`${styles.profile} ${styles.podiumProfile}`} aria-haspopup="dialog" aria-label={`View ${animal.name}, ${rank} place, ${animal.votes} ${animal.votes === 1 ? "vote" : "votes"}`} onClick={() => setSelected(animal)}>
             <span className={styles.crownedAvatar}>
@@ -92,7 +100,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
               {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
             </span>
             <span className={styles.name}><HoverLetters text={animal.name} /></span>
-            <span className={styles.podiumVotes}>{animal.votes.toLocaleString()} {animal.votes === 1 ? "vote" : "votes"}</span>
+            {!compact && <span className={styles.podiumVotes}>{formatVotes(animal.votes)}</span>}
           </button>)}
         </div> : <span className={styles.compactStatus}>Awaiting votes</span>}
       </li>;
