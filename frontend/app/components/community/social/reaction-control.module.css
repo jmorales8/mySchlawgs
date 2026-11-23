@@ -1,6 +1,11 @@
 .control { position: relative; display: flex; min-width: 0; border: 0; background: transparent; color: var(--muted); }
 .control > button.primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; min-width: 0; border: 0; border-radius: 0; padding: 10px 2px; background: transparent; color: inherit; font: 600 .875rem/1.45 var(--font-geist-sans), Arial, sans-serif; cursor: pointer; }
 .control > button.primary { flex: 0 1 auto; }
+.control > button.primary, .choices button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .control { align-items: stretch; min-height: 44px; }
 .control > button.primary { min-width: 44px; padding: 0; line-height: 1; }
 .control > button.primary > svg, .control > button.primary > span { display: block; flex-shrink: 0; }

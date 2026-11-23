@@ -71,6 +71,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("reports", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
+    options.AddPolicy("bug-reports", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromHours(1) }));
     options.AddPolicy("uploads", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(10) }));
@@ -121,6 +124,7 @@ app.MapPostEndpoints();
 app.MapModerationEndpoints();
 app.MapPromptEndpoints();
 app.MapPostingAppealEndpoints();
+app.MapBugReportEndpoints();
 app.MapNotificationEndpoints();
 
 app.Run();
