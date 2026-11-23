@@ -99,7 +99,7 @@ export default function VoteLeaders({ compact = false }: { compact?: boolean }) 
               {index === 0 && <span className={styles.crown} aria-hidden="true">👑</span>}
               {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" width={40} height={40} /> : <span className={styles.initial} aria-hidden="true">{animal.name.slice(0, 1).toUpperCase()}</span>}
             </span>
-            <span className={styles.name}><HoverLetters text={animal.name} /></span>
+            <span className={styles.name}>{compact ? animal.name : <HoverLetters text={animal.name} />}</span>
             {!compact && <span className={styles.podiumVotes}>{formatVotes(animal.votes)}</span>}
           </button>)}
         </div> : <span className={styles.compactStatus}>Awaiting votes</span>}
