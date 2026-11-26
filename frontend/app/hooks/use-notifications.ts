@@ -2,7 +2,10 @@
 
 import { useApiQuery } from "./use-api-query";
 
-export type NotificationItem = { id: string; postId: string; kind: string; message: string; createdAt: string; readAt: string | null; removed: boolean; commentId: string | null };
+export type NotificationItem = {
+  id: string; postId: string; kind: string; message: string; createdAt: string; readAt: string | null;
+  removed: boolean; commentId: string | null; photoId: string | null; canRemoveTag: boolean;
+};
 type Inbox = { unreadCount: number; reactionPeople: number; commentPeople: number; digestEnabled: boolean; followedPostCount: number; items: NotificationItem[] };
 
 export function useNotifications(page = 0) {

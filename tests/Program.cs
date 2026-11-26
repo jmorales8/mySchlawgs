@@ -51,14 +51,14 @@ async Task<JsonElement> Check(HttpResponseMessage response, HttpStatusCode expec
 }
 var png = ImageSanitizerChecks.Fixture(ImageMagick.MagickFormat.Png);
 var cleanPng = await Backend.Security.ImageSanitizer.SanitizeAsync(png, "image/png");
-MultipartFormDataContent Upload(bool invalid = false, int count = 2) {
+MultipartFormDataContent Upload(bool invalid = false, int count = 2, Guid[][]? tags = null) {
     var form = new MultipartFormDataContent();
     for (var i = 0; i < count; i++) {
         var bytes = new ByteArrayContent(invalid && i == count - 1 ? new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 } : png);
         bytes.Headers.ContentType = new("image/png");
         form.Add(bytes, "files", $"dog{i}.png"); form.Add(new StringContent($"Story {i}"), "descriptions");
     }
-    form.Add(new StringContent(JsonSerializer.Serialize(Enumerable.Repeat(Array.Empty<Guid>(), count))), "animalIds");
+    form.Add(new StringContent(JsonSerializer.Serialize(tags ?? Enumerable.Repeat(Array.Empty<Guid>(), count).ToArray())), "animalIds");
     return form;
 }
 try {
@@ -114,6 +114,32 @@ try {
     if (uploaded[1].GetProperty("postId").GetGuid() != postId) throw new Exception("Carousel split across posts");
     var post = await Check(await anonymous.GetAsync($"/api/posts/{postId}"), HttpStatusCode.OK, "shared post accessible without login");
     if (post.GetArrayLength() != 2 || post[1].GetProperty("description").GetString() != "Story 1") throw new Exception("Shared post incomplete");
+    var schlawgId = animal.GetProperty("id").GetGuid();
+    var searchPath = $"/api/account/animals/tag-options?q=%40{names[0].ToUpperInvariant()}";
+    await Check(await anonymous.GetAsync(searchPath), HttpStatusCode.Unauthorized, "schlawg tag search requires login");
+    var tagOptions = await Check(await second.GetAsync(searchPath), HttpStatusCode.OK, "find another account's schlawg by handle");
+    if (!tagOptions.GetProperty("items").EnumerateArray().Any(item => item.GetProperty("id").GetGuid() == schlawgId))
+        throw new Exception("Cross-account search did not return the schlawg");
+    var taggedPost = await Check(await second.PostAsync("/api/photos", Upload(tags: [[schlawgId], [schlawgId, schlawgId]])), HttpStatusCode.Created, "tag another account's schlawg on two slides");
+    var taggedPostId = taggedPost[0].GetProperty("postId").GetGuid();
+    var taggedPhotoId = taggedPost[1].GetProperty("id").GetGuid();
+    var tagsInbox = await Check(await first.GetAsync("/api/notifications"), HttpStatusCode.OK, "schlawg owner receives tag notifications");
+    var tagNotices = tagsInbox.GetProperty("items").EnumerateArray().Where(item => item.GetProperty("kind").GetString() == "schlawg-tag").ToArray();
+    if (tagNotices.Length != 2) throw new Exception("Expected one notification per tagged slide");
+    var tagNotice = tagNotices.Single(item => item.GetProperty("photoId").GetGuid() == taggedPhotoId);
+    if (tagNotice.GetProperty("postId").GetGuid() != taggedPostId || !tagNotice.GetProperty("canRemoveTag").GetBoolean())
+        throw new Exception("Tag notification lacks the correct post, slide, or removal permission");
+    var removeTagPath = $"/api/notifications/{tagNotice.GetProperty("id").GetGuid()}/schlawg-tag";
+    await Check(await second.DeleteAsync(removeTagPath), HttpStatusCode.NotFound, "poster cannot act on the schlawg owner's notification");
+    await Check(await first.DeleteAsync(removeTagPath), HttpStatusCode.NoContent, "schlawg owner removes the tag from the notified slide");
+    await Check(await first.DeleteAsync(removeTagPath), HttpStatusCode.NoContent, "tag removal can be retried");
+    var updatedPost = await Check(await anonymous.GetAsync($"/api/posts/{taggedPostId}"), HttpStatusCode.OK, "post still available after tag removal");
+    if (updatedPost.GetArrayLength() != 2 || updatedPost[0].GetProperty("animalProfiles").GetArrayLength() != 1 || updatedPost[1].GetProperty("animalProfiles").GetArrayLength() != 0)
+        throw new Exception("Tag removal affected the wrong slide");
+    tagsInbox = await Check(await first.GetAsync("/api/notifications"), HttpStatusCode.OK, "inbox reflects removed tag");
+    if (tagsInbox.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == tagNotice.GetProperty("id").GetGuid()).GetProperty("canRemoveTag").GetBoolean())
+        throw new Exception("Inbox still allows removal for a removed tag");
+    await db.Posts.Where(p => p.Id == taggedPostId).ExecuteDeleteAsync();
     await Check(await anonymous.GetAsync($"/api/posts/{Guid.NewGuid()}"), HttpStatusCode.NotFound, "missing shared post returns 404");
     await Check(await anonymous.GetAsync($"/api/posts/{Guid.Parse(profile.GetProperty("profilePhotoUrl").GetString()!.Split('/').Last())}"), HttpStatusCode.NotFound, "profile image is not a post");
     await Check(await anonymous.PutAsJsonAsync($"/api/posts/{postId}/reaction", new { kind = "like" }), HttpStatusCode.Unauthorized, "anonymous reactions rejected");

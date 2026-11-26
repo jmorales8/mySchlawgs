@@ -31,6 +31,7 @@
 .card { padding: 18px; border: 1px solid var(--border); border-radius: 10px; margin: 16px 0; overflow-wrap: anywhere; transition: background-color 180ms ease; }
 .card > p:first-child { margin-top: 0; }
 .cardActions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-block: 1em; }
+.cardActions[data-schlawg-tag] { flex-wrap: wrap; justify-content: flex-start; }
 .cardActions p { margin: 0; }
 .cardActions button { flex: 0 0 auto; max-inline-size: 50%; overflow-wrap: anywhere; }
 .card time { font-size: 12px; color: var(--muted); }

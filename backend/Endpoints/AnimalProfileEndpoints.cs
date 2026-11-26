@@ -22,6 +22,35 @@ public static class AnimalProfileEndpoints
         });
         group.MapGet("/", async (AppDbContext db, HttpContext context, CancellationToken ct) =>
             Results.Ok(await db.AnimalProfiles.AsNoTracking().Where(x => x.OwnerId == Owner(context)).OrderBy(x => x.CreatedAt).ToListAsync(ct)));
+        group.MapGet("/tag-options", async (string? q, int? offset, AppDbContext db, HttpContext context, CancellationToken ct) => {
+            const int pageSize = 25;
+            var start = Math.Max(0, offset ?? 0);
+            var search = (q ?? "").Trim();
+            if (search.Length > 100) return Results.BadRequest(new { message = "Search using up to 100 characters." });
+
+            var ownerId = Owner(context);
+            var query = from animal in db.AnimalProfiles.AsNoTracking()
+                        join owner in db.Users.AsNoTracking() on animal.OwnerId equals owner.Id
+                        select new { Animal = animal, owner.Username, owner.NormalizedUsername };
+            var term = search.TrimStart('@').ToUpperInvariant();
+            if (term.Length > 0)
+                query = search.StartsWith('@')
+                    ? query.Where(x => x.NormalizedUsername.Contains(term))
+                    : query.Where(x => x.Animal.Name.ToUpper().Contains(term) || x.NormalizedUsername.Contains(term));
+
+            var page = await query.OrderByDescending(x => x.Animal.OwnerId == ownerId)
+                .ThenBy(x => x.Animal.Name).ThenBy(x => x.Animal.Id)
+                .Skip(start).Take(pageSize + 1)
+                .Select(x => new { x.Animal.Id, x.Animal.Name, x.Animal.AnimalType, x.Animal.ProfilePhotoId, x.Username })
+                .ToListAsync(ct);
+            return Results.Ok(new {
+                items = page.Take(pageSize).Select(x => new {
+                    x.Id, x.Name, x.AnimalType, x.Username,
+                    profilePhotoUrl = x.ProfilePhotoId is Guid photoId ? $"/api/photos/{photoId}" : null
+                }),
+                nextOffset = page.Count > pageSize ? (int?)(start + pageSize) : null
+            });
+        });
         group.MapPost("/", async (ProfileInput input, AppDbContext db, HttpContext context, CancellationToken ct) => {
             var animal = new AnimalProfile { Id = Guid.NewGuid(), OwnerId = Owner(context), Name = "", AnimalType = "", Breed = "", AgeUnit = "", FunFact = "", CreatedAt = DateTimeOffset.UtcNow };
             var error = Apply(input, animal);

@@ -29,8 +29,8 @@ import FeedSkeleton from "./feed/feed-skeleton";
 import PhotoCard from "./feed/photo-card";
 import CreateProfileDialog from "../../account/animals/create-profile-dialog";
 
-type AnimalOption = { id: string; name: string; animalType: string; profilePhotoUrl: string | null };
-type Draft = { file: File; url: string; description: string; animalIds: string[] };
+import AnimalTagPicker, { type AnimalOption } from "./profiles/animal-tag-picker";
+type Draft = { file: File; url: string; description: string; animals: AnimalOption[] };
 
 const feedTabs = [
   { feed: "latest", label: "Latest", desktopLabel: "Latest moments", icon: "M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" },
@@ -47,7 +47,7 @@ function subscribeMobileNavigation(onChange: () => void) {
 function mobileNavigationSnapshot() { return window.matchMedia("(max-width: 760px)").matches; }
 function serverNavigationSnapshot() { return false; }
 
-export default function Community({ postId, discovery, notificationCommentId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; discovery?: DiscoveryCategory; initialFeed?: Feed }) {
+export default function Community({ postId, discovery, notificationCommentId, initialPhotoId, initialFeed = "latest" }: { postId?: string; notificationCommentId?: string; initialPhotoId?: string; discovery?: DiscoveryCategory; initialFeed?: Feed }) {
   const router = useRouter();
   const brandPathId = useId();
   const showFeedNavigation = !postId || !!discovery;
@@ -69,21 +69,8 @@ export default function Community({ postId, discovery, notificationCommentId, in
   const [descriptionMode, setDescriptionMode] = useState<"individual" | "shared">("individual");
   const [sharedDescription, setSharedDescription] = useState("");
   const [ideaOfTheWeek, setIdeaOfTheWeek] = useState(false);
-  const [animalProfilesResult, setAnimalProfilesResult] = useState<{ ownerId: string; items: AnimalOption[]; failed: boolean } | null>(null);
-  const animalProfilesRequest = useRef(0);
-  const userId = user?.id;
-  const animalProfiles = userId && animalProfilesResult?.ownerId === userId ? animalProfilesResult.items : [];
-  const animalProfilesLoading = !!userId && animalProfilesResult?.ownerId !== userId;
-  const [animalPicker, setAnimalPicker] = useState<{ draftUrl: string; closing: boolean } | null>(null);
+  const [animalPickerUrl, setAnimalPickerUrl] = useState<string | null>(null);
   const [createProfile, setCreateProfile] = useState<{ draftUrl: string; ownerId: string } | null>(null);
-  const animalPickerRef = useRef<HTMLDivElement>(null);
-  const closeAnimalPicker = useCallback(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setAnimalPicker(null);
-      return;
-    }
-    setAnimalPicker(current => current && !current.closing ? { ...current, closing: true } : current);
-  }, []);
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const draftRef = useRef<Draft[]>([]);
@@ -111,35 +98,6 @@ export default function Community({ postId, discovery, notificationCommentId, in
     }, 180);
     return () => window.clearTimeout(timeout);
   }, [accountMenuClosing]);
-  useEffect(() => {
-    if (!animalPicker?.closing) return;
-    const draftUrl = animalPicker.draftUrl;
-    const timeout = window.setTimeout(() => {
-      setAnimalPicker(current => current?.draftUrl === draftUrl && current.closing ? null : current);
-    }, 160);
-    return () => window.clearTimeout(timeout);
-  }, [animalPicker]);
-  useEffect(() => {
-    if (!animalPicker || animalPicker.closing) return;
-    function closeOnOutsideClick(event: PointerEvent) {
-      if (animalPickerRef.current && !animalPickerRef.current.contains(event.target as Node)) closeAnimalPicker();
-    }
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [animalPicker, closeAnimalPicker]);
-  useEffect(() => {
-    if (!userId) return;
-    let active = true;
-    const loadAnimalProfiles = () => {
-      const request = ++animalProfilesRequest.current;
-      api<AnimalOption[]>("/api/account/animals")
-        .then(items => { if (active && request === animalProfilesRequest.current) setAnimalProfilesResult({ ownerId: userId, items, failed: false }); })
-        .catch(() => { if (active && request === animalProfilesRequest.current) setAnimalProfilesResult({ ownerId: userId, items: [], failed: true }); });
-    };
-    loadAnimalProfiles();
-    window.addEventListener("focus", loadAnimalProfiles);
-    return () => { active = false; window.removeEventListener("focus", loadAnimalProfiles); };
-  }, [userId]);
   useEffect(() => {
     function close(event: PointerEvent) {
       if (accountRef.current && !accountRef.current.contains(event.target as Node)) closeAccountMenu();
@@ -176,6 +134,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
     if (!composerClosing) return;
     const timeout = window.setTimeout(() => {
       if (composerClosing === "uploaded") clearDrafts();
+      setAnimalPickerUrl(null);
       setComposerOpen(false);
       setComposerClosing(null);
       setUploadToast({ message: composerClosing === "uploaded" ? "Photo uploaded" : "Photo not uploaded", success: composerClosing === "uploaded" });
@@ -210,7 +169,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
     if (drafts.length + selected.length > 10 || [...drafts.map(d => d.file), ...selected].reduce((sum, f) => sum + f.size, 0) > 50 * 1024 * 1024) { setError("Choose up to 10 photos and 50 MB per post."); return; }
     if (selected.some(f => !["image/jpeg", "image/png", "image/gif", "image/webp"].includes(f.type) || f.size === 0 || f.size > 10 * 1024 * 1024)) { setError("Use JPEG, PNG, GIF, or WebP images, up to 10 MB each."); return; }
     setError(""); setNotice("");
-    updateDrafts([...drafts, ...selected.map(file => ({ file, url: URL.createObjectURL(file), description: "", animalIds: [] }))]);
+    updateDrafts([...drafts, ...selected.map(file => ({ file, url: URL.createObjectURL(file), description: "", animals: [] }))]);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -220,7 +179,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
     setBusy(true); setError(""); setNotice("");
     const data = new FormData();
     drafts.forEach(d => { data.append("files", d.file); data.append("descriptions", descriptionMode === "shared" ? sharedDescription : d.description); });
-    data.append("animalIds", JSON.stringify(drafts.map(d => d.animalIds)));
+    data.append("animalIds", JSON.stringify(drafts.map(d => d.animals.map(animal => animal.id))));
     if (ideaOfTheWeek) data.append("ideaOfTheWeek", "true");
     try { await api("/api/photos", { method: "POST", body: data }); setComposerClosing("uploaded"); if (!postId) { chooseFeed("latest"); if (feed === "latest") await refresh(); } }
     catch (e) { setError((e as Error).message); } finally { setBusy(false); }
@@ -272,6 +231,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
       if (total > 50 * 1024 * 1024) throw new Error("This edit would exceed the 50 MB post limit. Try a smaller crop.");
       const url = URL.createObjectURL(file);
       updateDrafts(drafts.map(draft => draft.url === editingDraft.url ? { ...draft, file, url } : draft));
+      if (animalPickerUrl === editingDraft.url) setAnimalPickerUrl(url);
       URL.revokeObjectURL(editingDraft.url);
       setEditingDraft(null);
     }} />}
@@ -340,7 +300,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
         {user?.postingRestrictedAt && <p role="status">You can still react. Posting and commenting are paused. <Link href="/account/reports">Appeal your posting restriction</Link>.</p>}
         {!ready && <p className={sharedStyles.muted} role="status">Getting your account…</p>}
         {(error || accountError) && !composerOpen && <ErrorToast key={error || accountError} message={error || accountError} />}{notice && <p className={sharedStyles.notice} role="status">{notice}</p>}
-        {user && showFeedNavigation && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>
+        {user && showFeedNavigation && <dialog ref={composerRef} className={composerStyles.composerDialog} data-closing={composerClosing !== null} aria-labelledby="composer-title" onCancel={event => { event.preventDefault(); if (animalPickerUrl) setAnimalPickerUrl(null); else dismissComposer(); }} onClick={event => { if (event.target === event.currentTarget) dismissComposer(); }}>
         <form className={composerStyles.composerForm} onSubmit={upload} aria-busy={busy} inert={composerClosing !== null}>
           <div className={composerStyles.composerHeader}><p className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>A moment worth sharing</p><button type="button" disabled={busy || composerClosing !== null} onClick={dismissComposer} aria-label="Close post composer">✕</button></div>
           <h2 id="composer-title">What&apos;s your schlawg up to?</h2><p className={sharedStyles.muted}>Add up to 10 photos with one shared description or a story for each. 10 MB per photo, 50 MB total. Your draft stays here if you close this window.</p>
@@ -360,45 +320,31 @@ export default function Community({ postId, discovery, notificationCommentId, in
           {drafts.length > 0 && descriptionMode === "shared" && <label className={composerStyles.sharedDescription}>Description for all photos<textarea maxLength={2000} value={sharedDescription} disabled={busy} placeholder="Tell the story behind this moment…" onChange={e => setSharedDescription(e.target.value)} /></label>}
           {drafts.length > 0 && <div className={composerStyles.drafts}>{drafts.map((draft, i) => <div className={composerStyles.draft} key={draft.url}>
             <img src={draft.url} alt={`Preview of ${draft.file.name}`} /><div><button type="button" className={layoutStyles.textButton} disabled={busy} onClick={() => setEditingDraft(draft)}>Edit photo</button>
-              <div className={composerStyles.animalSelector}>
+              <div className={composerStyles.animalSelector} onKeyDown={event => {
+                if (event.key !== "Escape" || animalPickerUrl !== draft.url) return;
+                event.preventDefault();
+                setAnimalPickerUrl(null);
+                event.currentTarget.querySelector<HTMLButtonElement>('[aria-expanded="true"]')?.focus();
+              }}>
                 <span>Who is this schlawg?</span>
                 <div className={composerStyles.animalTagRow}>
-                  {draft.animalIds.map(animalId => {
-                    const animal = animalProfiles.find(item => item.id === animalId);
-                    if (!animal) return null;
-                    return <button key={animal.id} type="button" className={composerStyles.animalTag} aria-label={`Remove ${animal.name} from this photo`} title={`Remove ${animal.name}`} disabled={busy} onClick={() => updateDrafts(drafts.map((item, j) => j === i ? { ...item, animalIds: item.animalIds.filter(id => id !== animal.id) } : item))}>
-                      {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" /> : <span>{animal.name.slice(0, 1).toUpperCase()}</span>}
-                      <svg aria-hidden="true" viewBox="0 0 12 12"><path d="m3 3 6 6m0-6L3 9" /></svg>
-                    </button>;
-                  })}
-                  <div className={composerStyles.animalPicker} ref={animalPicker?.draftUrl === draft.url ? animalPickerRef : undefined}>
-                    <button type="button" className={composerStyles.animalPickerTrigger} aria-label="Add a schlawg to this photo" aria-expanded={animalPicker?.draftUrl === draft.url && !animalPicker.closing} title="Add a schlawg" onClick={() => {
-                      if (animalPicker?.draftUrl === draft.url && !animalPicker.closing) closeAnimalPicker();
-                      else setAnimalPicker({ draftUrl: draft.url, closing: false });
-                    }}><span aria-hidden="true">+</span><span className={composerStyles.animalPickerLabel}>Add schlawg</span></button>
-                    {animalPicker?.draftUrl === draft.url && <div className={`${composerStyles.animalPickerMenu}${animalPicker.closing ? ` ${composerStyles.animalPickerMenuClosing}` : ""}`} role="group" aria-label={`Add an animal to ${draft.file.name}`}>
-                      <header className={composerStyles.animalPickerMenuHeader}><p>{animalProfilesLoading ? "Loading profiles…" : animalProfilesResult?.failed ? "Couldn’t load profiles" : animalProfiles.length ? "Add a schlawg" : "No schlawg profiles yet"}</p><button type="button" className={composerStyles.animalPickerMenuClose} aria-label="Close schlawg choices" onClick={closeAnimalPicker}>×</button></header>
-                      {animalProfiles.map(animal => {
-                        const selected = draft.animalIds.includes(animal.id);
-                        return <button key={animal.id} type="button" disabled={busy || selected} aria-label={selected ? `${animal.name} already added` : `Add ${animal.name}`} onClick={() => {
-                          updateDrafts(drafts.map((item, j) => j === i && !item.animalIds.includes(animal.id) ? { ...item, animalIds: [...item.animalIds, animal.id] } : item));
-                          closeAnimalPicker();
-                        }}>
-                          {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" /> : <span className={composerStyles.animalInitial}>{animal.name.slice(0, 1).toUpperCase()}</span>}
-                          <span>{animal.name}<small>{animal.animalType}</small></span>{selected && <span className={composerStyles.animalAdded}>Added</span>}
-                        </button>;
-                      })}
-                      {animalProfilesResult?.failed && <button type="button" onClick={() => window.dispatchEvent(new Event("focus"))}>Try again</button>}
-                      <button type="button" disabled={busy} aria-haspopup="dialog" onClick={() => {
-                        animalPickerRef.current?.querySelector<HTMLButtonElement>(`.${composerStyles.animalPickerTrigger}`)?.focus();
-                        setAnimalPicker(null);
-                        setCreateProfile({ draftUrl: draft.url, ownerId: user.id });
-                      }}>+ Create a schlawg profile</button>
-                    </div>}
-                  </div>
+                  {draft.animals.map(animal => <button key={animal.id} type="button" className={composerStyles.animalTag} aria-label={`Remove ${animal.name} from this photo`} title={`Remove ${animal.name}`} disabled={busy} onClick={() => updateDrafts(drafts.map((item, j) => j === i ? { ...item, animals: item.animals.filter(tag => tag.id !== animal.id) } : item))}>
+                    {animal.profilePhotoUrl ? <img src={animal.profilePhotoUrl} alt="" /> : <span>{animal.name.slice(0, 1).toUpperCase()}</span>}
+                    <svg aria-hidden="true" viewBox="0 0 12 12"><path d="m3 3 6 6m0-6L3 9" /></svg>
+                  </button>)}
+                  <button type="button" className={composerStyles.animalPickerTrigger} disabled={busy}
+                    aria-expanded={animalPickerUrl === draft.url} onClick={() => setAnimalPickerUrl(animalPickerUrl === draft.url ? null : draft.url)}>
+                    <span aria-hidden="true">@</span><span className={composerStyles.animalPickerLabel}>Tag a schlawg</span>
+                  </button>
                 </div>
+                {animalPickerUrl === draft.url && <AnimalTagPicker userId={user.id} selected={draft.animals} disabled={busy}
+                  onSelect={animal => updateDrafts(draftRef.current.map(item => item.url === draft.url ? { ...item, animals: [...item.animals, animal] } : item))}
+                  onCreate={() => {
+                    setAnimalPickerUrl(null);
+                    setCreateProfile({ draftUrl: draft.url, ownerId: user.id });
+                  }} />}
               </div>
-              {descriptionMode === "individual" ? <label>Description for {draft.file.name}<textarea maxLength={2000} value={draft.description} placeholder="Tell the story behind this photo…" disabled={busy} onChange={e => updateDrafts(drafts.map((d, j) => j === i ? { ...d, description: e.target.value } : d))} /></label> : <p className={sharedStyles.muted}>{draft.file.name} · Uses the shared description</p>}<button type="button" className={layoutStyles.textButton} disabled={busy} onClick={() => { URL.revokeObjectURL(draft.url); updateDrafts(drafts.filter((_, j) => j !== i)); }}>Remove photo</button></div>
+              {descriptionMode === "individual" ? <label>Description for {draft.file.name}<textarea maxLength={2000} value={draft.description} placeholder="Tell the story behind this photo…" disabled={busy} onChange={e => updateDrafts(drafts.map((d, j) => j === i ? { ...d, description: e.target.value } : d))} /></label> : <p className={sharedStyles.muted}>{draft.file.name} · Uses the shared description</p>}<button type="button" className={layoutStyles.textButton} disabled={busy} onClick={() => { URL.revokeObjectURL(draft.url); if (animalPickerUrl === draft.url) setAnimalPickerUrl(null); updateDrafts(drafts.filter((_, j) => j !== i)); }}>Remove photo</button></div>
           </div>)}</div>}
           <div className={composerStyles.composeActions}>
             <button disabled={busy || !drafts.length}>{busy ? "Saving…" : `Share ${drafts.length || "your"} photo${drafts.length === 1 ? "" : "s"}`}</button>
@@ -406,13 +352,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
           </div>
         </form></dialog>}
         {composerOpen && user && createProfile?.ownerId === user.id && <CreateProfileDialog postPhoto={drafts.find(draft => draft.url === createProfile.draftUrl)?.file} onCancel={() => setCreateProfile(null)} onSaved={animal => {
-          animalProfilesRequest.current++;
-          setAnimalProfilesResult(current => ({
-            ownerId: user.id,
-            items: [...(current?.ownerId === user.id ? current.items.filter(item => item.id !== animal.id) : []), animal],
-            failed: false,
-          }));
-          updateDrafts(draftRef.current.map(draft => draft.url === createProfile.draftUrl ? { ...draft, animalIds: [...draft.animalIds, animal.id] } : draft));
+          updateDrafts(draftRef.current.map(draft => draft.url === createProfile.draftUrl ? { ...draft, animals: [...draft.animals, animal] } : draft));
           setCreateProfile(null);
         }} />}
         {!mobileNavigation && !postId && <VoteLeaders />}
@@ -429,7 +369,7 @@ export default function Community({ postId, discovery, notificationCommentId, in
           <div><h2 className={`${layoutStyles.eyebrow} ${composerStyles.eyebrow}`}>{discovery ? { popular: "Popular · Community favorites", niche: "Niche · Hidden gems", relevant: "Relevant · Recent conversations", iotw: "#Idea of the Week" }[discovery] : feed === "following" ? "Following" : feedCaughtUp ? "Nothing new from the bill collector :(" : "Fresh from the bill collectors"}</h2>{postId && <h2>Your desired post!</h2>}</div>
           {postId && <Link className={layoutStyles.backToFeed} href="/">← Go back to main feed</Link>}
         </div>
-        {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : feed === "following" ? "posts from schlawg bill posters you follow" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "following" ? "No posts from followed posters yet." : feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : feed === "following" ? "Open a poster’s avatar menu in Latest moments to follow them." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} notificationCommentId={notificationCommentId} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
+        {!postId && feed !== "latest" && ready && !user ? <div className={layoutStyles.empty}><h2>Your personal feed</h2><p><a href="#account">Log in or sign up</a> to see {feed === "mine" ? "your photos" : feed === "following" ? "posts from schlawg bill posters you follow" : "posts you’ve liked or commented on"}.</p></div> : feedLoading || !ready ? <FeedSkeleton single={!!postId} /> : feedError ? <div className={sharedStyles.card} role="alert"><p>{feedError}</p><button onClick={() => void refresh()}>Try again</button></div> : !photos.length ? <div className={layoutStyles.empty}><span>♡</span><h2>{feed === "following" ? "No posts from followed posters yet." : feed === "interacted" ? "Your favorites start here." : "A good moment starts here."}</h2><p>{feed === "mine" ? "Your photos will appear here once you share them." : feed === "interacted" ? "React to a post, leave a comment or reply, or like a comment to find that post here." : feed === "following" ? "Open a poster’s avatar menu in Latest moments to follow them." : "Be the first to introduce your animal to the other schlawgs."}</p></div> : <div className={sharedStyles.feed}>{groupPhotoBatches(photos).map(batch => <PhotoCard key={batch[0].batchId ?? batch[0].id} photos={batch} initialPhotoId={initialPhotoId} notificationCommentId={notificationCommentId} userId={user?.id ?? null} owner={batch[0].ownerId === user?.id} onSaved={refresh} />)}</div>}
         {!postId && ready && !feedLoading && !feedError && photos.length > 0 && (feed === "latest" || user) && <FeedEnding key={`${user?.id ?? "guest"}-${feed}`} />}
       </section>
     </div></div>

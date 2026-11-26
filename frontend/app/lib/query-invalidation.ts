@@ -14,6 +14,7 @@ export function queryRefreshMode(queryPath: string, mutationPath: string): Refre
     return queryPath === "/api/account/following" || queryPath === "/api/photos?feed=following" || queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";
   }
   if (/^\/api\/notifications(?:\/|$)/.test(mutationPath)) {
+    if (mutationPath.endsWith("/schlawg-tag") && /^\/api\/(?:photos|posts)(?:[/?]|$)/.test(queryPath)) return "refresh";
     return queryPath.startsWith("/api/notifications") ? "refresh" : "ignore";
   }
   if (/^\/api\/posts\/[^/]+\/(?:reaction|comments\/[^/]+\/(?:reaction|like))$/.test(mutationPath)) {

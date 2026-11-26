@@ -24,6 +24,13 @@ export default function NotificationInbox({ onNavigate }: { onNavigate?: () => v
       await refresh();
     } catch (e) { setWriteError((e as Error).message); } finally { setBusy(false); }
   }
+  async function removeTag(id: string) {
+    setBusy(true); setWriteError("");
+    try {
+      await api(`/api/notifications/${id}/schlawg-tag`, { method: "DELETE" });
+      await refresh();
+    } catch (e) { setWriteError((e as Error).message); } finally { setBusy(false); }
+  }
   return <section className={styles.inbox}>
     <h2>Notifications {data && <small>({data.unreadCount} unread)</small>}</h2>
     {error && <p role="alert" className={styles.error}>{error} <Link onClick={onNavigate} href="/#account">Account</Link></p>}
@@ -40,8 +47,12 @@ export default function NotificationInbox({ onNavigate }: { onNavigate?: () => v
       {data.items.map(item => <article key={item.id} className={`${styles.card} ${item.readAt ? styles.read : styles.unread}`}>
         <p>{!item.readAt && <strong>New · </strong>}{item.message}</p>
         <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time>
-        <footer className={styles.cardActions}>
-          <p>{item.kind === "moderation-report" ? <Link onClick={onNavigate} href="/moderation">Open moderation queue</Link> : ["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link className={styles.viewPost} onClick={onNavigate} href={item.commentId ? `/posts/${item.postId}?notificationComment=${item.commentId}` : `/posts/${item.postId}`}>{item.commentId ? "View comment" : "View post"}</Link>}</p>
+        <footer className={styles.cardActions} data-schlawg-tag={item.kind === "schlawg-tag" || undefined}>
+          <p>{item.kind === "moderation-report" ? <Link onClick={onNavigate} href="/moderation">Open moderation queue</Link> : ["report", "removed", "dispute"].includes(item.kind) ? <Link onClick={onNavigate} href={`/account/reports?post=${item.postId}`}>View reports / dispute</Link> : item.removed ? "This post is no longer publicly available." : <Link className={styles.viewPost} onClick={onNavigate} href={
+            `/posts/${item.postId}${item.commentId ? `?notificationComment=${item.commentId}` : item.photoId ? `?photo=${item.photoId}` : ""}`
+          }>{item.commentId ? "View comment" : item.photoId ? "View tagged photo" : "View post"}</Link>}</p>
+          {item.canRemoveTag && <button disabled={busy} onClick={() => void removeTag(item.id)}>Remove my schlawg’s tag</button>}
+          {item.kind === "schlawg-tag" && !item.canRemoveTag && <p role="status">Tag removed</p>}
           {!item.readAt && <button disabled={busy} onClick={() => void mark([item])}>Mark as read</button>}
         </footer>
       </article>)}

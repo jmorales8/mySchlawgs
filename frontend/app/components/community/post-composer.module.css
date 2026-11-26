@@ -51,23 +51,18 @@
 .animalTag.animalTag > span, .animalInitial { display: grid; place-items: center; background: var(--selected); color: var(--link); font-size: 1rem; font-weight: 700; }
 .animalTag.animalTag svg { position: absolute; top: -3px; right: -4px; width: 16px; height: 16px; padding: 2px; border: 1px solid var(--surface); border-radius: 50%; background: var(--accent); color: var(--on-accent); stroke: currentColor; stroke-width: 1.7; }
 .animalTag.animalTag:hover { border-color: var(--accent); }
-.animalPicker.animalPicker { position: relative; flex: 0 0 auto; }
 .animalPickerTrigger[aria-expanded=true] { background: var(--selected); border-color: var(--accent); }
-.animalPickerMenu { position: absolute; z-index: 30; top: calc(100% + 8px); left: 0; display: grid; gap: 4px; width: min(272px, calc(100vw - 48px)); max-height: 280px; overflow: auto; padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px rgb(40 22 36 / 18%); color: var(--foreground); transform-origin: top left; animation: animalPickerOpen 160ms cubic-bezier(.16, 1, .3, 1) both; }
-.animalPickerMenuClosing { pointer-events: none; animation: animalPickerClose 160ms ease-in both; }
-.animalPickerMenuHeader { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 4px 4px 8px; }
-.animalPickerMenuHeader > p { margin: 0; color: var(--muted); font-size: .8125rem; font-weight: 500; }
-.animalPickerMenuHeader.animalPickerMenuHeader > .animalPickerMenuClose { display: grid; place-items: center; flex: 0 0 32px; width: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted); font-size: 1.25rem; line-height: 1; }
-.animalPickerMenuHeader.animalPickerMenuHeader > .animalPickerMenuClose:hover { background: var(--selected); color: var(--link); }
-@keyframes animalPickerOpen { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes animalPickerClose { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-4px) scale(.98); } }
-.animalPickerMenu.animalPickerMenu > button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--foreground); text-align: left; }
-.animalPickerMenu.animalPickerMenu > button:not(:disabled):hover { background: var(--selected); }
-.animalPickerMenu.animalPickerMenu > button:disabled { opacity: .72; }
+.animalPickerMenu { display: grid; gap: 8px; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 12px; color: var(--foreground); }
+.animalPickerMenu > label { margin: 0; padding: 4px; }
+.animalPickerMenu input { min-width: 0; width: 100%; }
+.animalPickerMenu p { margin: 0; padding: 4px 8px; color: var(--muted); font-size: .8125rem; font-weight: 500; }
+.animalPickerResults { display: grid; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--control-border) transparent; }
+.animalPickerMenu.animalPickerMenu button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--foreground); text-align: left; overflow-wrap: anywhere; }
+.animalPickerMenu.animalPickerMenu button:not(:disabled, [aria-disabled=true]):hover { background: var(--selected); }
+.animalPickerMenu.animalPickerMenu button:is(:disabled, [aria-disabled=true]) { opacity: .72; cursor: default; }
 .animalPickerMenu img, .animalInitial { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%; }
-.animalPickerMenu button > span:nth-child(2) { display: grid; gap: 1px; }
+.animalPickerMenu button > span:nth-child(2) { display: grid; min-width: 0; gap: 1px; }
 .animalPickerMenu small { color: var(--muted); font-size: .75rem; font-weight: 400; }
 .animalPickerMenu .animalAdded { margin-left: auto; color: var(--link); font-size: .75rem; font-weight: 600; }
-.animalPickerMenu > a { padding: 8px; color: var(--link); font-size: .8125rem; text-underline-offset: 3px; }
-:is(.animalTag.animalTag, .animalPickerTrigger, .animalPickerMenu button, .animalPickerMenu a):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .animalPickerMenu, .animalPickerMenuClosing { animation: none; } }
+:is(.animalTag.animalTag, .animalPickerTrigger):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.animalPickerMenu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

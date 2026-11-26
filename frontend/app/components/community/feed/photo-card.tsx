@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import sharedStyles from "../community.module.css";
 import styles from "./photo-card.module.css";
 import Avatar from "../../shared/avatar";
@@ -15,11 +15,12 @@ import SchlawgProfileDialog, { type SchlawgProfile } from "../profiles/schlawg-p
 import type { Photo } from "../types";
 import { useAccount } from "../../../contexts/account-context";
 
-export default function PhotoCard({ photos, owner, onSaved, userId, notificationCommentId }: { photos: Photo[]; notificationCommentId?: string; userId: string | null; owner: boolean; onSaved: () => Promise<void> }) {
+export default function PhotoCard({ photos, owner, onSaved, userId, notificationCommentId, initialPhotoId }: { photos: Photo[]; notificationCommentId?: string; initialPhotoId?: string; userId: string | null; owner: boolean; onSaved: () => Promise<void> }) {
   const { user } = useAccount();
   const [selectedAnimal, setSelectedAnimal] = useState<SchlawgProfile | null>(null);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [initialIndex] = useState(() => Math.max(0, photos.findIndex(photo => photo.id === initialPhotoId)));
+  const [activeIndex, setActiveIndex] = useState(initialIndex);
   const [quoteTarget, setQuoteTarget] = useState<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const index = Math.min(activeIndex, photos.length - 1);
@@ -29,6 +30,10 @@ export default function PhotoCard({ photos, owner, onSaved, userId, notification
     const track = trackRef.current;
     track?.scrollTo({ left: next * track.clientWidth, behavior: "instant" });
   }, []);
+  useLayoutEffect(() => {
+    const track = trackRef.current;
+    if (initialIndex && track) track.scrollTo({ left: initialIndex * track.clientWidth, behavior: "instant" });
+  }, [initialIndex]);
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;

@@ -83,15 +83,12 @@ public static class PhotoEndpoints
         }
         else if (!profile)
         {
-            foreach (var selectedId in animalIdsByPhoto.SelectMany(ids => ids).Distinct())
-            {
-                if (!animalsById.ContainsKey(selectedId))
-                {
-                    var selected = await db.AnimalProfiles.SingleOrDefaultAsync(x => x.Id == selectedId && x.OwnerId == ownerId, cancellationToken);
-                    if (selected is null) return Results.BadRequest(new { message = "Choose one of your own schlawg profiles." });
-                    animalsById.Add(selectedId, selected);
-                }
-            }
+            var selectedIds = animalIdsByPhoto.SelectMany(ids => ids).Distinct().ToArray();
+            if (selectedIds.Length > 0)
+                animalsById = await db.AnimalProfiles.AsNoTracking().Where(x => selectedIds.Contains(x.Id))
+                    .ToDictionaryAsync(x => x.Id, cancellationToken);
+            if (animalsById.Count != selectedIds.Length)
+                return Results.BadRequest(new { message = "A tagged schlawg profile is no longer available. Remove the tag and try again." });
         }
         var photos = new List<Photo>();
         var batchId = Guid.NewGuid();
@@ -157,7 +154,23 @@ public static class PhotoEndpoints
 
         photos.Add(photo);
         }
-        if (!profile) db.Posts.Add(new Post { Id = batchId, OwnerId = ownerId, CreatedAt = uploadedAt });
+        if (!profile)
+        {
+            db.Posts.Add(new Post { Id = batchId, OwnerId = ownerId, CreatedAt = uploadedAt });
+            foreach (var photo in photos)
+            foreach (var tag in photo.AnimalProfiles)
+            {
+                var tagged = animalsById[tag.AnimalProfileId];
+                if (tagged.OwnerId == ownerId) continue;
+                var location = photos.Count > 1 ? $"photo {photo.BatchPosition + 1} of their post" : "their photo";
+                db.Notifications.Add(new Notification {
+                    Id = Guid.NewGuid(), UserId = tagged.OwnerId, PostId = batchId, Kind = "schlawg-tag",
+                    EventKey = $"schlawg-tag:{photo.Id}:{tagged.Id}",
+                    Message = $"@{user.Username} tagged your schlawg {tagged.Name} in {location}.",
+                    CreatedAt = uploadedAt
+                });
+            }
+        }
         db.Photos.AddRange(photos);
         if (animal != null) animal.ProfilePhotoId = photos[0].Id;
         else if (profile) user.ProfilePhotoId = photos[0].Id;
